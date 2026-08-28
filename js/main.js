@@ -34,12 +34,28 @@ const state = {
     animationFrame: 0,
     animationTimer: 0
   },
+  inventory: {},
+  worldItems: [
+    { id: 'wood_01', name: '薪', type: 'wood', x: 690, picked: false },
+    { id: 'can_01', name: '缶詰', type: 'can', x: 1080, picked: false },
+    { id: 'cloth_01', name: '布', type: 'cloth', x: 1460, picked: false }
+  ],
   cameraX: 0,
   movingLeft: false,
   movingRight: false,
   lastTimestamp: 0,
-  minuteAccumulator: 0
+  minuteAccumulator: 0,
+  nearbyItemId: null,
+  lastNotifiedItemId: null
 };
+
+const controls = {
+  leftButton: null,
+  actionButton: null,
+  rightButton: null
+};
+
+const PICKUP_DISTANCE = 38;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -118,8 +134,8 @@ function drawHouse(screenX, groundY) {
 function drawRoadObjects(groundY) {
   const objects = [
     { x: 790, type: 'tree' },
-    { x: 1120, type: 'crate' },
-    { x: 1510, type: 'tree' },
+    { x: 1200, type: 'crate' },
+    { x: 1570, type: 'tree' },
     { x: 1910, type: 'crate' }
   ];
 
@@ -142,6 +158,50 @@ function drawRoadObjects(groundY) {
       ctx.lineWidth = 2;
       ctx.strokeRect(x - 24, groundY - 38, 48, 38);
     }
+  }
+}
+
+function drawCollectibleItem(item, groundY) {
+  if (item.picked) return;
+
+  const x = Math.round(item.x - state.cameraX);
+  if (x < -60 || x > canvas.clientWidth + 60) return;
+
+  ctx.save();
+  ctx.lineWidth = 2;
+
+  if (item.type === 'wood') {
+    ctx.strokeStyle = '#554638';
+    ctx.fillStyle = '#8a6c4d';
+    for (let i = 0; i < 3; i += 1) {
+      ctx.fillRect(x - 17 + i * 8, groundY - 14 - i * 3, 24, 6);
+      ctx.strokeRect(x - 17 + i * 8, groundY - 14 - i * 3, 24, 6);
+    }
+  } else if (item.type === 'can') {
+    ctx.fillStyle = '#9da4a0';
+    ctx.strokeStyle = '#565c59';
+    ctx.fillRect(x - 10, groundY - 23, 20, 23);
+    ctx.strokeRect(x - 10, groundY - 23, 20, 23);
+    ctx.beginPath();
+    ctx.ellipse(x, groundY - 23, 10, 3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (item.type === 'cloth') {
+    ctx.fillStyle = '#b7aa95';
+    ctx.strokeStyle = '#6b6257';
+    ctx.fillRect(x - 14, groundY - 18, 28, 18);
+    ctx.strokeRect(x - 14, groundY - 18, 28, 18);
+    ctx.beginPath();
+    ctx.moveTo(x - 4, groundY - 18);
+    ctx.lineTo(x + 4, groundY);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawWorldItems(groundY) {
+  for (const item of state.worldItems) {
+    drawCollectibleItem(item, groundY);
   }
 }
 
@@ -187,6 +247,7 @@ function drawWorld() {
 
   drawHouse(90 - state.cameraX, groundY);
   drawRoadObjects(groundY);
+  drawWorldItems(groundY);
 
   ctx.strokeStyle = '#757568';
   ctx.lineWidth = 3;
@@ -260,6 +321,80 @@ function startAutoMove(direction) {
   }
 }
 
+function getNearbyItem() {
+  let nearest = null;
+  let nearestDistance = Infinity;
+
+  for (const item of state.worldItems) {
+    if (item.picked) continue;
+
+    const distance = Math.abs(item.x - state.player.x);
+    if (distance <= PICKUP_DISTANCE && distance < nearestDistance) {
+      nearest = item;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearest;
+}
+
+function inventoryText() {
+  const entries = Object.entries(state.inventory).filter(([, count]) => count > 0);
+  if (entries.length === 0) return '持ち物はまだありません。';
+  return `持ち物：${entries.map(([name, count]) => `${name}×${count}`).join('、')}`;
+}
+
+function pickUpItem(item) {
+  if (!item || item.picked) return;
+
+  item.picked = true;
+  state.inventory[item.name] = (state.inventory[item.name] || 0) + 1;
+  state.nearbyItemId = null;
+  state.lastNotifiedItemId = null;
+  messageEl.textContent = `${item.name}を拾いました。${inventoryText()}`;
+  updateActionButton();
+}
+
+function updateNearbyItem() {
+  const item = getNearbyItem();
+  state.nearbyItemId = item ? item.id : null;
+
+  if (!item) {
+    state.lastNotifiedItemId = null;
+    return;
+  }
+
+  const isMoving = state.movingLeft || state.movingRight;
+  if (isMoving) {
+    stopMovement();
+  }
+
+  if (state.lastNotifiedItemId !== item.id) {
+    messageEl.textContent = `${item.name}を見つけました。「拾う」で持ち物に入ります。`;
+    state.lastNotifiedItemId = item.id;
+  }
+}
+
+function findItemById(id) {
+  return state.worldItems.find((item) => item.id === id) || null;
+}
+
+function updateActionButton() {
+  if (!controls.actionButton) return;
+
+  if (state.movingLeft || state.movingRight) {
+    controls.actionButton.textContent = '止まる';
+    return;
+  }
+
+  if (state.nearbyItemId) {
+    controls.actionButton.textContent = '拾う';
+    return;
+  }
+
+  controls.actionButton.textContent = '持ち物';
+}
+
 function update(timestamp) {
   if (!state.lastTimestamp) state.lastTimestamp = timestamp;
   const deltaSeconds = Math.min((timestamp - state.lastTimestamp) / 1000, 0.05);
@@ -284,10 +419,13 @@ function update(timestamp) {
     }
   }
 
+  updateNearbyItem();
+
   const stillMoving = state.movingLeft || state.movingRight;
   updatePlayerAnimation(deltaSeconds, stillMoving);
   advanceTimeByMovement(deltaSeconds, stillMoving);
   updateCamera();
+  updateActionButton();
   drawWorld();
 
   requestAnimationFrame(update);
@@ -304,34 +442,49 @@ function makeButton(label, className = '') {
 function buildControls() {
   controlsEl.replaceChildren();
 
-  const leftButton = makeButton('←');
-  const stopButton = makeButton('止まる', 'safe');
-  const rightButton = makeButton('→');
+  controls.leftButton = makeButton('←');
+  controls.actionButton = makeButton('持ち物', 'safe');
+  controls.rightButton = makeButton('→');
 
-  leftButton.addEventListener('click', () => {
+  controls.leftButton.addEventListener('click', () => {
     startAutoMove(-1);
-    messageEl.textContent = '左へ移動中。止めるときは「止まる」を押します。';
+    messageEl.textContent = '左へ移動中です。';
+    updateActionButton();
   });
 
-  stopButton.addEventListener('click', () => {
-    stopMovement();
-    messageEl.textContent = '立ち止まりました。';
+  controls.actionButton.addEventListener('click', () => {
+    if (state.movingLeft || state.movingRight) {
+      stopMovement();
+      messageEl.textContent = '立ち止まりました。';
+      updateActionButton();
+      return;
+    }
+
+    const item = state.nearbyItemId ? findItemById(state.nearbyItemId) : getNearbyItem();
+    if (item) {
+      pickUpItem(item);
+      return;
+    }
+
+    messageEl.textContent = inventoryText();
   });
 
-  rightButton.addEventListener('click', () => {
+  controls.rightButton.addEventListener('click', () => {
     startAutoMove(1);
-    messageEl.textContent = '右へ移動中。止めるときは「止まる」を押します。';
+    messageEl.textContent = '右へ移動中です。';
+    updateActionButton();
   });
 
-  controlsEl.append(leftButton, stopButton, rightButton);
+  controlsEl.append(controls.leftButton, controls.actionButton, controls.rightButton);
 }
 
 function init() {
   updateHud();
   buildControls();
-  messageEl.textContent = '朝。左右のボタンを1回タップすると、その方向へ歩き続けます。';
+  messageEl.textContent = '朝。外には使えそうな物資が残っています。';
   resizeCanvas();
   updateCamera();
+  updateActionButton();
   drawWorld();
   requestAnimationFrame(update);
 }
@@ -344,6 +497,7 @@ window.addEventListener('resize', () => {
 
 window.addEventListener('blur', () => {
   stopMovement();
+  updateActionButton();
 });
 
 init();
