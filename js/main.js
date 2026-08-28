@@ -245,6 +245,21 @@ function updatePlayerAnimation(deltaSeconds, isMoving) {
   }
 }
 
+function stopMovement() {
+  state.movingLeft = false;
+  state.movingRight = false;
+}
+
+function startAutoMove(direction) {
+  if (direction < 0) {
+    state.movingLeft = true;
+    state.movingRight = false;
+  } else {
+    state.movingLeft = false;
+    state.movingRight = true;
+  }
+}
+
 function update(timestamp) {
   if (!state.lastTimestamp) state.lastTimestamp = timestamp;
   const deltaSeconds = Math.min((timestamp - state.lastTimestamp) / 1000, 0.05);
@@ -260,10 +275,18 @@ function update(timestamp) {
     state.player.direction = direction;
     state.player.x += direction * state.player.speed * deltaSeconds;
     state.player.x = clamp(state.player.x, 30, state.worldWidth - 30);
+
+    if (
+      (direction < 0 && state.player.x <= 30) ||
+      (direction > 0 && state.player.x >= state.worldWidth - 30)
+    ) {
+      stopMovement();
+    }
   }
 
-  updatePlayerAnimation(deltaSeconds, isMoving);
-  advanceTimeByMovement(deltaSeconds, isMoving);
+  const stillMoving = state.movingLeft || state.movingRight;
+  updatePlayerAnimation(deltaSeconds, stillMoving);
+  advanceTimeByMovement(deltaSeconds, stillMoving);
   updateCamera();
   drawWorld();
 
@@ -278,56 +301,35 @@ function makeButton(label, className = '') {
   return button;
 }
 
-function bindHoldButton(button, property) {
-  const start = (event) => {
-    event.preventDefault();
-    state[property] = true;
-    if (button.setPointerCapture && event.pointerId !== undefined) {
-      try {
-        button.setPointerCapture(event.pointerId);
-      } catch (_) {
-        // iOSなどで取得できない場合はそのまま続行する。
-      }
-    }
-  };
-
-  const stop = () => {
-    state[property] = false;
-  };
-
-  button.addEventListener('pointerdown', start);
-  button.addEventListener('pointerup', stop);
-  button.addEventListener('pointercancel', stop);
-  button.addEventListener('lostpointercapture', stop);
-}
-
 function buildControls() {
   controlsEl.replaceChildren();
 
   const leftButton = makeButton('←');
-  const inspectButton = makeButton('調べる', 'safe');
+  const stopButton = makeButton('止まる', 'safe');
   const rightButton = makeButton('→');
 
-  bindHoldButton(leftButton, 'movingLeft');
-  bindHoldButton(rightButton, 'movingRight');
-
-  inspectButton.addEventListener('click', () => {
-    if (state.player.x < 620) {
-      messageEl.textContent = '自宅です。ここを当面の拠点にします。';
-    } else if (state.player.x < 1250) {
-      messageEl.textContent = '道路脇です。まだ使えそうな物が残っているかもしれません。';
-    } else {
-      messageEl.textContent = '町の方へ道が続いています。';
-    }
+  leftButton.addEventListener('click', () => {
+    startAutoMove(-1);
+    messageEl.textContent = '左へ移動中。止めるときは「止まる」を押します。';
   });
 
-  controlsEl.append(leftButton, inspectButton, rightButton);
+  stopButton.addEventListener('click', () => {
+    stopMovement();
+    messageEl.textContent = '立ち止まりました。';
+  });
+
+  rightButton.addEventListener('click', () => {
+    startAutoMove(1);
+    messageEl.textContent = '右へ移動中。止めるときは「止まる」を押します。';
+  });
+
+  controlsEl.append(leftButton, stopButton, rightButton);
 }
 
 function init() {
   updateHud();
   buildControls();
-  messageEl.textContent = '朝。自宅から一日を始めます。左右のボタンを押して移動できます。';
+  messageEl.textContent = '朝。左右のボタンを1回タップすると、その方向へ歩き続けます。';
   resizeCanvas();
   updateCamera();
   drawWorld();
@@ -341,8 +343,7 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('blur', () => {
-  state.movingLeft = false;
-  state.movingRight = false;
+  stopMovement();
 });
 
 init();
