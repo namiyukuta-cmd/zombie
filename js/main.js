@@ -22,10 +22,14 @@ const playerWalkFrames = PLAYER_WALK_SOURCES.map((src) => {
   return image;
 });
 
+const HOME_DOOR_X = 334;
+const HOME_DISTANCE = 55;
+const PICKUP_DISTANCE = 38;
+
 const state = {
   day: 1,
   time: 7 * 60,
-  location: '自宅',
+  location: '自宅前',
   worldWidth: 2400,
   player: {
     x: 260,
@@ -46,7 +50,10 @@ const state = {
   lastTimestamp: 0,
   minuteAccumulator: 0,
   nearbyItemId: null,
-  lastNotifiedItemId: null
+  lastNotifiedItemId: null,
+  nearbyHome: false,
+  homeNotified: false,
+  ignoreHomeUntilFar: false
 };
 
 const controls = {
@@ -55,15 +62,12 @@ const controls = {
   rightButton: null
 };
 
-const PICKUP_DISTANCE = 38;
-
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
 function formatTime(totalMinutes) {
-  const minutesInDay = 24 * 60;
-  const normalized = ((Math.floor(totalMinutes) % minutesInDay) + minutesInDay) % minutesInDay;
+  const normalized = ((Math.floor(totalMinutes) % 1440) + 1440) % 1440;
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
@@ -71,7 +75,6 @@ function formatTime(totalMinutes) {
 
 function getSunlight(totalMinutes) {
   const t = ((totalMinutes % 1440) + 1440) % 1440;
-
   if (t < 300) return 0.08;
   if (t < 420) return 0.08 + ((t - 300) / 120) * 0.92;
   if (t < 1020) return 1;
@@ -141,7 +144,6 @@ function drawRoadObjects(groundY) {
 
   for (const object of objects) {
     const x = object.x - state.cameraX;
-
     if (x < -100 || x > canvas.clientWidth + 100) continue;
 
     if (object.type === 'tree') {
@@ -163,7 +165,6 @@ function drawRoadObjects(groundY) {
 
 function drawCollectibleItem(item, groundY) {
   if (item.picked) return;
-
   const x = Math.round(item.x - state.cameraX);
   if (x < -60 || x > canvas.clientWidth + 60) return;
 
@@ -207,10 +208,7 @@ function drawWorldItems(groundY) {
 
 function drawPlayer(screenX, groundY) {
   const frame = playerWalkFrames[state.player.animationFrame];
-
-  if (!frame || !frame.complete || !frame.naturalWidth) {
-    return;
-  }
+  if (!frame || !frame.complete || !frame.naturalWidth) return;
 
   const x = Math.round(screenX);
   const y = Math.round(groundY - 48);
@@ -298,8 +296,8 @@ function updatePlayerAnimation(deltaSeconds, isMoving) {
   }
 
   state.player.animationTimer += deltaSeconds;
-
   const frameDuration = 0.13;
+
   while (state.player.animationTimer >= frameDuration) {
     state.player.animationTimer -= frameDuration;
     state.player.animationFrame = (state.player.animationFrame + 1) % playerWalkFrames.length;
@@ -312,6 +310,12 @@ function stopMovement() {
 }
 
 function startAutoMove(direction) {
+  if (state.nearbyHome) {
+    state.ignoreHomeUntilFar = true;
+    state.nearbyHome = false;
+    state.homeNotified = false;
+  }
+
   if (direction < 0) {
     state.movingLeft = true;
     state.movingRight = false;
@@ -327,8 +331,8 @@ function getNearbyItem() {
 
   for (const item of state.worldItems) {
     if (item.picked) continue;
-
     const distance = Math.abs(item.x - state.player.x);
+
     if (distance <= PICKUP_DISTANCE && distance < nearestDistance) {
       nearest = item;
       nearestDistance = distance;
@@ -355,7 +359,36 @@ function pickUpItem(item) {
   updateActionButton();
 }
 
-function updateNearbyItem() {
+function findItemById(id) {
+  return state.worldItems.find((item) => item.id === id) || null;
+}
+
+function updateNearbyTargets() {
+  const homeDistance = Math.abs(state.player.x - HOME_DOOR_X);
+
+  if (state.ignoreHomeUntilFar) {
+    if (homeDistance > HOME_DISTANCE + 40) {
+      state.ignoreHomeUntilFar = false;
+    }
+  } else if (homeDistance <= HOME_DISTANCE) {
+    state.nearbyHome = true;
+    state.nearbyItemId = null;
+
+    if (state.movingLeft || state.movingRight) {
+      stopMovement();
+    }
+
+    if (!state.homeNotified) {
+      messageEl.textContent = '自宅の玄関です。「家に入る」で中へ入れます。';
+      state.homeNotified = true;
+    }
+
+    return;
+  } else {
+    state.nearbyHome = false;
+    state.homeNotified = false;
+  }
+
   const item = getNearbyItem();
   state.nearbyItemId = item ? item.id : null;
 
@@ -364,8 +397,7 @@ function updateNearbyItem() {
     return;
   }
 
-  const isMoving = state.movingLeft || state.movingRight;
-  if (isMoving) {
+  if (state.movingLeft || state.movingRight) {
     stopMovement();
   }
 
@@ -373,10 +405,6 @@ function updateNearbyItem() {
     messageEl.textContent = `${item.name}を見つけました。「拾う」で持ち物に入ります。`;
     state.lastNotifiedItemId = item.id;
   }
-}
-
-function findItemById(id) {
-  return state.worldItems.find((item) => item.id === id) || null;
 }
 
 function updateActionButton() {
@@ -392,6 +420,11 @@ function updateActionButton() {
     return;
   }
 
+  if (state.nearbyHome) {
+    controls.actionButton.textContent = '家に入る';
+    return;
+  }
+
   controls.actionButton.textContent = '持ち物';
 }
 
@@ -404,9 +437,7 @@ function update(timestamp) {
   if (state.movingLeft) direction -= 1;
   if (state.movingRight) direction += 1;
 
-  const isMoving = direction !== 0;
-
-  if (isMoving) {
+  if (direction !== 0) {
     state.player.direction = direction;
     state.player.x += direction * state.player.speed * deltaSeconds;
     state.player.x = clamp(state.player.x, 30, state.worldWidth - 30);
@@ -419,7 +450,7 @@ function update(timestamp) {
     }
   }
 
-  updateNearbyItem();
+  updateNearbyTargets();
 
   const stillMoving = state.movingLeft || state.movingRight;
   updatePlayerAnimation(deltaSeconds, stillMoving);
@@ -466,6 +497,11 @@ function buildControls() {
       return;
     }
 
+    if (state.nearbyHome) {
+      window.location.href = 'zombie_home.html';
+      return;
+    }
+
     messageEl.textContent = inventoryText();
   });
 
@@ -481,9 +517,10 @@ function buildControls() {
 function init() {
   updateHud();
   buildControls();
-  messageEl.textContent = '朝。外には使えそうな物資が残っています。';
+  messageEl.textContent = '朝。自宅前から探索を始めます。';
   resizeCanvas();
   updateCamera();
+  updateNearbyTargets();
   updateActionButton();
   drawWorld();
   requestAnimationFrame(update);
