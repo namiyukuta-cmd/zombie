@@ -1,1 +1,65 @@
-h
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  >
+
+  <title>Zombie - Home</title>
+
+  <link rel="stylesheet" href="css/zombie-home.css">
+</head>
+
+<body>
+
+<div id="game">
+
+  <!-- 上部ステータス -->
+  <header id="hud">
+
+    <div id="date"></div>
+
+    <div id="time"></div>
+
+    <div id="location"></div>
+
+    <div id="light-level"></div>
+
+  </header>
+
+
+  <!-- 自宅 -->
+  <main id="home-area">
+
+    <canvas id="home-world"></canvas>
+
+  </main>
+
+
+  <!-- 状況説明 -->
+  <section id="message"></section>
+
+
+  <!-- 家具操作など -->
+  <section id="controls"></section>
+
+
+  <!-- 所持品・自宅備蓄などの表示用 -->
+  <section id="home-panel">
+
+    <div id="inventory"></div>
+
+    <div id="storage"></div>
+
+  </section>
+
+</div>
+
+
+<script type="module" src="js/home.js"></script>
+
+</body>
+</html>
