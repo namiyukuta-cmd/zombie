@@ -1,1 +1,150 @@
-h
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Zombie Hunter</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#151716;color:#f3f3f3;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overscroll-behavior:none}
+  body{min-height:100dvh;display:flex;justify-content:center}
+  #app{width:min(100%,560px);padding:10px 10px 18px}
+  #hud{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;font-size:17px}
+  .panel{background:#222724;border:1px solid #414842;border-radius:12px;padding:9px 11px}
+  #gameWrap{position:relative;width:100%;aspect-ratio:3/4;max-height:70dvh;border-radius:14px;overflow:hidden;border:1px solid #444;background:#262b27}
+  canvas{display:block;width:100%;height:100%;touch-action:none;background:#29302b}
+  #message{position:absolute;left:12px;right:12px;top:12px;text-align:center;font-size:17px;font-weight:700;text-shadow:0 2px 3px #000;pointer-events:none;min-height:24px}
+  #controls{display:grid;grid-template-columns:190px 1fr;gap:12px;margin-top:10px;align-items:end}
+  #pad{display:grid;grid-template-columns:58px 58px 58px;grid-template-rows:58px 58px 58px;gap:5px;justify-content:start;touch-action:none}
+  button{border:1px solid #59625b;background:#2a302c;color:#fff;border-radius:14px;font-size:22px;font-weight:800;min-width:58px;min-height:58px;touch-action:none;user-select:none}
+  button:active{background:#3b463f}
+  #up{grid-column:2;grid-row:1}#left{grid-column:1;grid-row:2}#down{grid-column:2;grid-row:2}#right{grid-column:3;grid-row:2}
+  #actions{display:grid;gap:8px}
+  #attack{min-height:72px;font-size:20px;background:#55302d}
+  #attack:active{background:#713e39}
+  #inventory{min-height:54px;font-size:17px;background:#303735}
+  #lootBox{margin-top:8px;font-size:17px;line-height:1.5}
+  .rare{color:#d8b4fe}.uncommon{color:#86efac}.common{color:#f3f3f3}
+  @media(max-width:390px){#controls{grid-template-columns:178px 1fr}#pad{grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px 54px}button{min-width:54px;min-height:54px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="panel">HP <b id="hp">100</b> / 100</div>
+    <div class="panel">LV <b id="lv">1</b>　撃破 <b id="kills">0</b></div>
+    <div class="panel">武器 <b id="weapon">素手</b></div>
+    <div class="panel">攻撃 <b id="atk">8</b>　EXP <b id="exp">0</b></div>
+  </div>
+  <div id="gameWrap">
+    <canvas id="game" width="540" height="720"></canvas>
+    <div id="message"></div>
+  </div>
+  <div id="controls">
+    <div id="pad">
+      <button id="up" aria-label="上">▲</button>
+      <button id="left" aria-label="左">◀</button>
+      <button id="down" aria-label="下">▼</button>
+      <button id="right" aria-label="右">▶</button>
+    </div>
+    <div id="actions">
+      <button id="attack">攻撃</button>
+      <button id="inventory">拾った装備を見る</button>
+    </div>
+  </div>
+  <div id="lootBox" class="panel">ゾンビを倒すと装備が落ちます。</div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const ui={hp:document.getElementById('hp'),lv:document.getElementById('lv'),kills:document.getElementById('kills'),weapon:document.getElementById('weapon'),atk:document.getElementById('atk'),exp:document.getElementById('exp'),msg:document.getElementById('message'),loot:document.getElementById('lootBox')};
+const world={w:1500,h:1500};
+const player={x:750,y:750,r:18,speed:190,hp:100,maxHp:100,atk:8,level:1,exp:0,kills:0,dirX:0,dirY:1,walk:0,weapon:'素手',inv:[]};
+const keys={up:false,down:false,left:false,right:false};
+let zombies=[],drops=[],last=performance.now(),attackTimer=0,hitFlash=0,messageTimer=0,spawnTimer=0,gameOver=false;
+const lootTable=[
+ {name:'木の棒',atk:2,rarity:'common',rate:0.40},
+ {name:'錆びたナイフ',atk:4,rarity:'common',rate:0.28},
+ {name:'鉄パイプ',atk:7,rarity:'uncommon',rate:0.16},
+ {name:'消防斧',atk:11,rarity:'uncommon',rate:0.10},
+ {name:'マチェット',atk:17,rarity:'rare',rate:0.05},
+ {name:'バール',atk:25,rarity:'rare',rate:0.01}
+];
+function rnd(a,b){return a+Math.random()*(b-a)}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function showMsg(t){ui.msg.textContent=t;messageTimer=1.5}
+function spawnZombie(){
+ const a=Math.random()*Math.PI*2,d=rnd(330,560); let x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;
+ x=Math.max(40,Math.min(world.w-40,x)); y=Math.max(40,Math.min(world.h-40,y));
+ const scale=1+Math.min(1.6,player.kills/18);
+ zombies.push({x,y,r:20,hp:Math.round(rnd(22,34)*scale),maxHp:34*scale,speed:rnd(35,58)+player.level*2,hit:0,walk:Math.random()*10});
+}
+for(let i=0;i<8;i++)spawnZombie();
+function chooseLoot(){
+ let r=Math.random(),sum=0;
+ for(const item of lootTable){sum+=item.rate;if(r<=sum)return item}
+ return lootTable[0];
+}
+function dropLoot(x,y){if(Math.random()>0.72)return;const item=chooseLoot();drops.push({x,y,r:12,item,bob:Math.random()*6.28})}
+function attack(){
+ if(gameOver||attackTimer>0)return;
+ attackTimer=.34;
+ const range=82,arc=.55; let hitAny=false;
+ for(let i=zombies.length-1;i>=0;i--){
+   const z=zombies[i],dx=z.x-player.x,dy=z.y-player.y,d=Math.hypot(dx,dy); if(d>range||d<1)continue;
+   const nx=dx/d,ny=dy/d,aim=nx*player.dirX+ny*player.dirY;
+   if(aim<arc)continue;
+   const dmg=Math.round(player.atk*rnd(.85,1.2)); z.hp-=dmg; z.hit=.12; z.x+=nx*16; z.y+=ny*16; hitAny=true;
+   if(z.hp<=0){player.kills++;player.exp+=5;dropLoot(z.x,z.y);zombies.splice(i,1);if(player.exp>=player.level*25){player.exp-=player.level*25;player.level++;player.maxHp+=8;player.hp=player.maxHp;player.atk+=1;showMsg('LEVEL UP!')};setTimeout(spawnZombie,450)}
+ }
+ if(!hitAny)showMsg('空振り'); updateUI();
+}
+function equip(item){player.inv.push(item); if(item.atk>player.atk-8){player.weapon=item.name;player.atk=8+(player.level-1)+item.atk;showMsg(item.name+' を装備');}updateUI()}
+function updateUI(){ui.hp.textContent=Math.max(0,Math.ceil(player.hp));ui.lv.textContent=player.level;ui.kills.textContent=player.kills;ui.weapon.textContent=player.weapon;ui.atk.textContent=player.atk;ui.exp.textContent=player.exp}
+function move(dt){
+ let dx=(keys.right?1:0)-(keys.left?1:0),dy=(keys.down?1:0)-(keys.up?1:0); const len=Math.hypot(dx,dy);
+ if(len){dx/=len;dy/=len;player.x+=dx*player.speed*dt;player.y+=dy*player.speed*dt;player.dirX=dx;player.dirY=dy;player.walk+=dt*11}
+ player.x=Math.max(25,Math.min(world.w-25,player.x));player.y=Math.max(25,Math.min(world.h-25,player.y));
+ for(let i=drops.length-1;i>=0;i--){if(dist(player,drops[i])<35){const d=drops.splice(i,1)[0];equip(d.item)}}
+}
+function update(dt){
+ if(gameOver)return; move(dt); attackTimer=Math.max(0,attackTimer-dt);hitFlash=Math.max(0,hitFlash-dt);messageTimer=Math.max(0,messageTimer-dt);if(messageTimer===0)ui.msg.textContent='';spawnTimer+=dt;if(spawnTimer>3.2&&zombies.length<14){spawnTimer=0;spawnZombie()}
+ for(const z of zombies){
+   const dx=player.x-z.x,dy=player.y-z.y,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d; z.x+=nx*z.speed*dt;z.y+=ny*z.speed*dt;z.walk+=dt*8;z.hit=Math.max(0,z.hit-dt);
+   if(d<player.r+z.r+5&&hitFlash<=0){player.hp-=8;hitFlash=.7;player.x+=nx*18;player.y+=ny*18;updateUI();if(player.hp<=0){player.hp=0;gameOver=true;showMsg('GAME OVER');ui.msg.textContent='GAME OVER';updateUI()}}
+ }
+ for(const d of drops)d.bob+=dt*4;
+}
+function worldToScreen(x,y,camX,camY){return{x:x-camX,y:y-camY}}
+function drawGround(camX,camY){
+ ctx.fillStyle='#2b312c';ctx.fillRect(0,0,W,H);ctx.strokeStyle='#343b35';ctx.lineWidth=1;const grid=60;let sx=-(camX%grid),sy=-(camY%grid);for(let x=sx;x<W;x+=grid){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=sy;y<H;y+=grid){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ const blocks=[[250,280,240,170],[980,260,220,200],[260,1000,210,230],[1050,1040,250,160]];for(const b of blocks){const p=worldToScreen(b[0],b[1],camX,camY);ctx.fillStyle='#363a37';ctx.fillRect(p.x,p.y,b[2],b[3]);ctx.strokeStyle='#4a504b';ctx.strokeRect(p.x,p.y,b[2],b[3])}
+}
+function drawHuman(sx,sy,angle,walk){
+ ctx.save();ctx.translate(sx,sy);ctx.rotate(angle);const swing=Math.sin(walk)*8;
+ ctx.strokeStyle=hitFlash>0?'#ff8d8d':'#e5e7eb';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-7,11);ctx.lineTo(-10+swing*.35,29);ctx.moveTo(7,11);ctx.lineTo(10-swing*.35,29);ctx.stroke();ctx.strokeStyle='#c8ced0';ctx.beginPath();ctx.moveTo(-13,-2);ctx.lineTo(-19-swing*.45,13);ctx.moveTo(13,-2);ctx.lineTo(19+swing*.45,13);ctx.stroke();ctx.fillStyle='#334155';ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e7d3bd';ctx.beginPath();ctx.arc(0,-19,10,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111827';ctx.fillRect(-5,-30,10,5);
+ if(attackTimer>0){ctx.strokeStyle='#d1d5db';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(13,-3);ctx.lineTo(43,-24);ctx.stroke()}
+ ctx.restore();
+}
+function drawZombie(z,camX,camY){const p=worldToScreen(z.x,z.y,camX,camY);ctx.save();ctx.translate(p.x,p.y);const angle=Math.atan2(player.y-z.y,player.x-z.x)+Math.PI/2;ctx.rotate(angle);const s=Math.sin(z.walk)*7;ctx.strokeStyle=z.hit>0?'#fca5a5':'#879a79';ctx.lineWidth=7;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-7,10);ctx.lineTo(-10+s*.3,27);ctx.moveTo(7,10);ctx.lineTo(10-s*.3,27);ctx.moveTo(-12,-2);ctx.lineTo(-20-s*.5,10);ctx.moveTo(12,-2);ctx.lineTo(20+s*.5,10);ctx.stroke();ctx.fillStyle=z.hit>0?'#7f1d1d':'#485846';ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();ctx.fillStyle='#9aaa86';ctx.beginPath();ctx.arc(0,-18,10,0,Math.PI*2);ctx.fill();ctx.restore();const hp=Math.max(0,z.hp/z.maxHp);ctx.fillStyle='#111';ctx.fillRect(p.x-19,p.y-39,38,5);ctx.fillStyle='#a83d3d';ctx.fillRect(p.x-19,p.y-39,38*hp,5)}
+function draw(){
+ const camX=Math.max(0,Math.min(world.w-W,player.x-W/2)),camY=Math.max(0,Math.min(world.h-H,player.y-H/2));drawGround(camX,camY);
+ for(const d of drops){const p=worldToScreen(d.x,d.y,camX,camY);ctx.fillStyle=d.item.rarity==='rare'?'#c084fc':d.item.rarity==='uncommon'?'#4ade80':'#e5e7eb';ctx.beginPath();ctx.arc(p.x,p.y+Math.sin(d.bob)*3,8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#111';ctx.stroke()}
+ const sorted=[...zombies].sort((a,b)=>a.y-b.y);for(const z of sorted)drawZombie(z,camX,camY);const angle=Math.atan2(player.dirY,player.dirX)-Math.PI/2;drawHuman(player.x-camX,player.y-camY,angle,player.walk);
+ if(attackTimer>0){ctx.strokeStyle='rgba(255,255,255,.45)';ctx.lineWidth=5;ctx.beginPath();ctx.arc(player.x-camX,player.y-camY,68,angle-.65,angle+.65);ctx.stroke()}
+}
+function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}
+function bindHold(id,key){const el=document.getElementById(id);const on=e=>{e.preventDefault();keys[key]=true;try{el.setPointerCapture(e.pointerId)}catch(_){}};const off=e=>{e.preventDefault();keys[key]=false};el.addEventListener('pointerdown',on);el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off);el.addEventListener('lostpointercapture',off)}
+bindHold('up','up');bindHold('down','down');bindHold('left','left');bindHold('right','right');
+document.getElementById('attack').addEventListener('pointerdown',e=>{e.preventDefault();attack()});
+document.getElementById('inventory').addEventListener('click',()=>{if(!player.inv.length){ui.loot.textContent='まだ装備を拾っていません。';return}ui.loot.innerHTML='<b>拾った装備</b><br>'+player.inv.slice(-8).reverse().map(i=>`<span class="${i.rarity}">${i.name}（+${i.atk}）</span>`).join('<br>')});
+window.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='w')keys.up=true;if(e.key==='ArrowDown'||e.key==='s')keys.down=true;if(e.key==='ArrowLeft'||e.key==='a')keys.left=true;if(e.key==='ArrowRight'||e.key==='d')keys.right=true;if(e.key===' '){e.preventDefault();attack()}});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowUp'||e.key==='w')keys.up=false;if(e.key==='ArrowDown'||e.key==='s')keys.down=false;if(e.key==='ArrowLeft'||e.key==='a')keys.left=false;if(e.key==='ArrowRight'||e.key==='d')keys.right=false});
+updateUI();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
