@@ -1,0 +1,259 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  background: #e7e3d9;
+  color: #1f2524;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#game {
+  width: 100%;
+  max-width: 560px;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #f5f2e9;
+  overflow: hidden;
+}
+
+/* 上部ステータス */
+#hud {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: #a9aaa3;
+  border-bottom: 1px solid #8d8f88;
+}
+
+#hud > div {
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  background: #f8f6ef;
+  font-size: 17px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#date:empty::after {
+  content: "1日目";
+  color: #666b67;
+}
+
+#time:empty::after {
+  content: "--:--";
+  color: #666b67;
+}
+
+#location:empty::after {
+  content: "現在地";
+  color: #666b67;
+}
+
+#light-level:empty::after {
+  content: "明るさ --";
+  color: #666b67;
+}
+
+/* 横スクロールのゲーム表示部分 */
+#game-area {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 250px;
+  overflow: hidden;
+  background: #d9e3e3;
+  border-bottom: 1px solid #9fa39e;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#world {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(
+      to bottom,
+      #dce7e9 0%,
+      #e8e6dc 58%,
+      #aaa894 58%,
+      #8f8d7d 100%
+    );
+}
+
+/* イベント・状況メッセージ */
+#message {
+  flex: 0 0 auto;
+  min-height: 64px;
+  max-height: 116px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  background: #fffdf7;
+  border-bottom: 1px solid #b7b5ac;
+  font-size: 17px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-overflow-scrolling: touch;
+}
+
+#message:empty::after {
+  content: " ";
+}
+
+/* JSがその場に必要な操作ボタンを生成する領域 */
+#controls {
+  flex: 0 0 auto;
+  min-height: 74px;
+  max-height: 210px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  overflow-y: auto;
+  background: #dedbd1;
+  border-top: 1px solid #c4c1b7;
+  -webkit-overflow-scrolling: touch;
+}
+
+#controls:empty::after {
+  content: "操作ボタンはゲーム開始後に表示されます";
+  grid-column: 1 / -1;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  color: #666b67;
+  background: #f1eee5;
+  border: 1px dashed #aaa89f;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 17px;
+}
+
+#controls button {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 10px 8px;
+  border: 1px solid #777c77;
+  border-radius: 10px;
+  background: #faf8f1;
+  color: #202523;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+#controls button:active {
+  transform: translateY(1px);
+  background: #d8d5cb;
+}
+
+#controls button:focus-visible {
+  outline: 3px solid #3f6354;
+  outline-offset: 2px;
+}
+
+#controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* JS側で使える共通クラス */
+#controls .wide {
+  grid-column: span 2;
+}
+
+#controls .full {
+  grid-column: 1 / -1;
+}
+
+#controls .danger {
+  border-color: #875d55;
+  background: #f4e9e5;
+}
+
+#controls .safe {
+  border-color: #587064;
+  background: #e8eee8;
+}
+
+/* 小さい縦画面でもゲーム部分を残す */
+@media (max-height: 700px) {
+  #hud > div {
+    min-height: 38px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  #game-area {
+    min-height: 220px;
+  }
+
+  #message {
+    min-height: 56px;
+    max-height: 88px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  #controls {
+    min-height: 68px;
+    max-height: 168px;
+    padding: 8px;
+  }
+
+  #controls button {
+    min-height: 50px;
+  }
+}
+
+@media (max-width: 360px) {
+  #hud > div,
+  #message,
+  #controls button,
+  #controls:empty::after {
+    font-size: 17px;
+  }
+
+  #controls {
+    gap: 6px;
+    padding: 8px;
+  }
+}
