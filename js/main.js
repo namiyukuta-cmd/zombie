@@ -8,6 +8,20 @@ const lightLevelEl = document.getElementById('light-level');
 const messageEl = document.getElementById('message');
 const controlsEl = document.getElementById('controls');
 
+const PLAYER_WALK_SOURCES = [
+  'assets/player/player_walk_01.png',
+  'assets/player/player_walk_02.png',
+  'assets/player/player_walk_03.png',
+  'assets/player/player_walk_04.png'
+];
+
+const playerWalkFrames = PLAYER_WALK_SOURCES.map((src) => {
+  const image = new Image();
+  image.src = src;
+  image.addEventListener('load', () => drawWorld());
+  return image;
+});
+
 const state = {
   day: 1,
   time: 7 * 60,
@@ -16,7 +30,9 @@ const state = {
   player: {
     x: 260,
     speed: 130,
-    direction: 1
+    direction: 1,
+    animationFrame: 0,
+    animationTimer: 0
   },
   cameraX: 0,
   movingLeft: false,
@@ -74,6 +90,7 @@ function resizeCanvas() {
   }
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 }
 
 function drawHouse(screenX, groundY) {
@@ -129,29 +146,25 @@ function drawRoadObjects(groundY) {
 }
 
 function drawPlayer(screenX, groundY) {
-  const flip = state.player.direction < 0 ? -1 : 1;
+  const frame = playerWalkFrames[state.player.animationFrame];
+
+  if (!frame || !frame.complete || !frame.naturalWidth) {
+    return;
+  }
+
+  const x = Math.round(screenX);
+  const y = Math.round(groundY - 48);
 
   ctx.save();
-  ctx.translate(screenX, groundY);
-  ctx.scale(flip, 1);
+  ctx.imageSmoothingEnabled = false;
 
-  ctx.fillStyle = '#2e3432';
-  ctx.fillRect(-10, -70, 20, 38);
-
-  ctx.fillStyle = '#c8aa8e';
-  ctx.beginPath();
-  ctx.arc(0, -84, 12, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = '#2e3432';
-  ctx.lineWidth = 6;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-4, -32);
-  ctx.lineTo(-9, -4);
-  ctx.moveTo(5, -32);
-  ctx.lineTo(11, -4);
-  ctx.stroke();
+  if (state.player.direction < 0) {
+    ctx.translate(x, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(frame, -16, y, 32, 48);
+  } else {
+    ctx.drawImage(frame, x - 16, y, 32, 48);
+  }
 
   ctx.restore();
 }
@@ -197,8 +210,8 @@ function updateCamera() {
   state.cameraX = clamp(desired, 0, Math.max(0, state.worldWidth - width));
 }
 
-function advanceTimeByMovement(deltaSeconds) {
-  if (!state.movingLeft && !state.movingRight) return;
+function advanceTimeByMovement(deltaSeconds, isMoving) {
+  if (!isMoving) return;
 
   state.minuteAccumulator += deltaSeconds;
 
@@ -216,6 +229,22 @@ function advanceTimeByMovement(deltaSeconds) {
   }
 }
 
+function updatePlayerAnimation(deltaSeconds, isMoving) {
+  if (!isMoving) {
+    state.player.animationFrame = 0;
+    state.player.animationTimer = 0;
+    return;
+  }
+
+  state.player.animationTimer += deltaSeconds;
+
+  const frameDuration = 0.13;
+  while (state.player.animationTimer >= frameDuration) {
+    state.player.animationTimer -= frameDuration;
+    state.player.animationFrame = (state.player.animationFrame + 1) % playerWalkFrames.length;
+  }
+}
+
 function update(timestamp) {
   if (!state.lastTimestamp) state.lastTimestamp = timestamp;
   const deltaSeconds = Math.min((timestamp - state.lastTimestamp) / 1000, 0.05);
@@ -225,13 +254,16 @@ function update(timestamp) {
   if (state.movingLeft) direction -= 1;
   if (state.movingRight) direction += 1;
 
-  if (direction !== 0) {
+  const isMoving = direction !== 0;
+
+  if (isMoving) {
     state.player.direction = direction;
     state.player.x += direction * state.player.speed * deltaSeconds;
     state.player.x = clamp(state.player.x, 30, state.worldWidth - 30);
   }
 
-  advanceTimeByMovement(deltaSeconds);
+  updatePlayerAnimation(deltaSeconds, isMoving);
+  advanceTimeByMovement(deltaSeconds, isMoving);
   updateCamera();
   drawWorld();
 
