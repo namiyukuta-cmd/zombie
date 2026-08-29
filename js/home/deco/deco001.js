@@ -26,7 +26,7 @@ export const homeDeco001 = {
   background: 'assets/home/home.jpeg',
 
   description:
-    'メイソンとミアが暮らしている山間部の家。',
+    'コールとミアが暮らしている山間部の家。',
 
 
   /* =======================================================
@@ -167,7 +167,7 @@ export const homeDeco001 = {
       requiresFlag: 'home_upper_floor_allowed',
 
       lockedMessage:
-        'メイソンから、この階へ行くことを禁止されている。',
+        'コールから、この階へ行くことを禁止されている。',
 
       action: {
         type: 'room',
@@ -197,7 +197,7 @@ export const homeDeco001 = {
       action: {
         type: 'message',
         text:
-          'メイソンとミアが使っているベッドだ。'
+          'コールとミアが使っているベッドだ。'
       }
     },
 
@@ -218,7 +218,7 @@ export const homeDeco001 = {
       requiresFlag: 'home_upper_floor_allowed',
 
       lockedMessage:
-        'メイソンから、この階へ行くことを禁止されている。',
+        'コールから、この階へ行くことを禁止されている。',
 
       action: {
         type: 'room',
