@@ -9,104 +9,132 @@ import {
   addItem,
   removeItem,
   getInventoryEntries,
-  getItemCount
+  getItemCount,
+  hasItem
 } from './inventory.js';
 
 import {
   getItemName
 } from './items.js';
 
+const canvas = document.getElementById('town-world');
+const ctx = canvas.getContext('2d');
+
 const dateEl = document.getElementById('date');
 const timeEl = document.getElementById('time');
 const locationEl = document.getElementById('location');
 const moneyEl = document.getElementById('money');
-const sceneArtEl = document.getElementById('scene-art');
-const sceneWeatherEl = document.getElementById('scene-weather');
-const sceneTitleEl = document.getElementById('scene-title');
-const sceneDetailEl = document.getElementById('scene-detail');
-const scenePeopleEl = document.getElementById('scene-people');
+const sceneNameEl = document.getElementById('scene-name');
 const messageEl = document.getElementById('message');
-const actionsEl = document.getElementById('actions');
-const routesEl = document.getElementById('routes');
-
-const newsButton = document.getElementById('news-button');
-const peopleButton = document.getElementById('people-button');
+const panelEl = document.getElementById('panel');
 const inventoryButton = document.getElementById('inventory-button');
-const mapButton = document.getElementById('map-button');
+const homeButton = document.getElementById('home-button');
 
-const LOCATIONS = {
-  residential: {
-    name: '住宅通り',
-    detail: '低い木造家屋が並ぶ、港から少し離れた静かな通り。',
-    people: ['solveig', 'anders'],
-    actions: ['alley_search'],
-    routes: ['market', 'station']
-  },
-  station: {
-    name: '駅前',
-    detail: 'Rauma線の終着駅。人と荷物が絶えず行き交っている。',
-    people: ['olav', 'hakon'],
-    actions: ['notice_board', 'cargo_search'],
-    routes: ['residential', 'market', 'harbor']
-  },
-  harbor: {
-    name: '港',
-    detail: '桟橋、倉庫、荷役場。フィヨルドから冷たい風が吹き込む。',
-    people: ['ingrid', 'nils'],
-    actions: ['harbor_work', 'shore_search'],
-    routes: ['station', 'newspaper']
-  },
-  market: {
-    name: '商店通り',
-    detail: '食料品店、小さなパン屋、雑貨を扱う店が並ぶ。',
-    people: ['marta', 'johan'],
-    actions: ['shop'],
-    routes: ['residential', 'station', 'clinic', 'newspaper']
-  },
-  newspaper: {
-    name: '新聞社前',
-    detail: '町の小さな新聞社。入口には最新号と号外が貼られている。',
-    people: ['ragnhild'],
-    actions: ['read_news', 'hear_rumor'],
-    routes: ['harbor', 'station', 'market']
-  },
-  clinic: {
-    name: '診療所',
-    detail: '小さな診療所。戦況が悪くなるにつれて出入りする人が増えている。',
-    people: ['liv', 'doctor'],
-    actions: ['clinic_help'],
-    routes: ['market', 'residential']
-  }
-};
+const PLAYER_SOURCES = [
+  'assets/player/player_walk_01.png',
+  'assets/player/player_walk_02.png',
+  'assets/player/player_walk_03.png',
+  'assets/player/player_walk_04.png'
+];
 
-const NPCS = {
-  solveig: { name: 'ソルヴェイ', role: '隣人' },
-  anders: { name: 'アンデシュ', role: '老大工' },
-  olav: { name: 'オーラヴ', role: '駅員' },
-  hakon: { name: 'ホーコン', role: '荷役係' },
-  ingrid: { name: 'イングリッド', role: '港湾労働者' },
-  nils: { name: 'ニルス', role: '漁師' },
-  marta: { name: 'マルタ', role: '食料品店主' },
-  johan: { name: 'ヨハン', role: 'パン職人' },
-  ragnhild: { name: 'ラグンヒル', role: '新聞記者' },
-  liv: { name: 'リヴ', role: '看護師' },
-  doctor: { name: 'オーセン医師', role: '医師' }
-};
+const playerFrames = PLAYER_SOURCES.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
 
-const SHOP = {
-  canned_food: { price: 3 },
-  cloth: { price: 2 },
-  wood: { price: 1 },
-  knife: { price: 12 }
+const SCENE_NAMES = {
+  street: '町の通り',
+  grocery: '食料品店',
+  station: '駅',
+  harbor: '港',
+  clinic: '診療所'
 };
 
 const NEWS = [
-  { day: 1, title: '南部の戦況、情報錯綜', text: 'ドイツ軍の侵攻後、鉄道と港の動きが急に増えている。町では英国軍が来るという噂も広がっている。' },
-  { day: 2, title: '英国軍、Åndalsnesへ', text: '英国軍部隊がÅndalsnesへ上陸。港と駅は兵士と物資で混雑している。' },
-  { day: 5, title: '駅周辺への空襲', text: '駅周辺が爆撃を受けた。重要な鉄道貨物は町の外へ移され、住民にも警戒が呼びかけられている。' },
-  { day: 8, title: '町中心部に大きな被害', text: '空襲が激化。中心部では火災と建物被害が相次ぎ、一部の商店や住宅が使えなくなった。' },
-  { day: 12, title: '撤退の噂', text: '前線の悪化を受け、英国軍がこの地域から退くのではないかという噂が広がっている。' }
+  {
+    day: 1,
+    title: '戦況の情報が錯綜',
+    text: '南から届く知らせは途切れ途切れだ。港と鉄道の動きだけが急に増えている。'
+  },
+  {
+    day: 2,
+    title: '英国軍部隊が到着',
+    text: '港と駅に兵士と貨物が集まり、町は朝から落ち着かない。'
+  },
+  {
+    day: 4,
+    title: '空襲への警戒',
+    text: '駅と港を狙った空襲が懸念されている。夜間の灯火を抑えるよう呼びかけが出た。'
+  },
+  {
+    day: 5,
+    title: '町に被害',
+    text: '爆撃で複数の建物が損傷した。店を閉め、町外へ避難する住民も出ている。'
+  },
+  {
+    day: 7,
+    title: '負傷者について奇妙な噂',
+    text: '診療所に運ばれた負傷者の一部が高熱と異常な興奮状態を示したという噂がある。'
+  }
 ];
+
+const LOOT = {
+  groceryShelfA: [
+    ['canned_food', 0.85],
+    ['canned_food', 0.50],
+    ['cloth', 0.25]
+  ],
+  groceryShelfB: [
+    ['canned_food', 0.65],
+    ['wood', 0.25],
+    ['cloth', 0.35]
+  ],
+  groceryBack: [
+    ['canned_food', 0.90],
+    ['canned_food', 0.70],
+    ['knife', 0.12],
+    ['cloth', 0.55]
+  ],
+  stationCrate: [
+    ['cloth', 0.50],
+    ['wood', 0.55],
+    ['small_stone', 0.80],
+    ['stick', 0.20]
+  ],
+  stationBench: [
+    ['cloth', 0.30],
+    ['small_stone', 0.75]
+  ],
+  harborCrate: [
+    ['wood', 0.75],
+    ['cloth', 0.55],
+    ['canned_food', 0.35]
+  ],
+  harborShore: [
+    ['small_stone', 0.95],
+    ['small_stone', 0.75],
+    ['stick', 0.28]
+  ],
+  clinicCabinet: [
+    ['cloth', 0.80],
+    ['cloth', 0.45],
+    ['canned_food', 0.18]
+  ]
+};
+
+const runtime = {
+  scene: 'street',
+  hitboxes: [],
+  playerX: 70,
+  targetX: 70,
+  direction: 1,
+  moving: false,
+  pendingAction: null,
+  frame: 0,
+  frameTimer: 0,
+  lastTimestamp: 0
+};
 
 function ensureTownState() {
   if (!gameState.town || typeof gameState.town !== 'object') {
@@ -115,15 +143,15 @@ function ensureTownState() {
 
   const town = gameState.town;
 
-  if (!LOCATIONS[town.current]) town.current = 'residential';
-  if (!Number.isFinite(town.money)) town.money = 18;
+  if (!SCENE_NAMES[town.scene]) town.scene = 'street';
+  if (!Number.isFinite(town.money)) town.money = 12;
+  if (!town.loot || typeof town.loot !== 'object') town.loot = {};
   if (!town.flags || typeof town.flags !== 'object') town.flags = {};
-  if (!town.metNpcs || typeof town.metNpcs !== 'object') town.metNpcs = {};
-  if (!town.relationships || typeof town.relationships !== 'object') town.relationships = {};
   if (!town.daily || typeof town.daily !== 'object') town.daily = {};
   if (!town.shopStock || typeof town.shopStock !== 'object') town.shopStock = {};
   if (!Number.isFinite(town.shopStockDay)) town.shopStockDay = 0;
 
+  runtime.scene = town.scene;
   refreshShopStock();
   saveGameState();
 }
@@ -134,29 +162,47 @@ function refreshShopStock() {
 
   town.shopStockDay = gameState.day;
   town.shopStock = {
-    canned_food: gameState.day >= 8 ? 1 : Math.max(2, 5 - Math.floor(gameState.day / 3)),
-    cloth: gameState.day >= 8 ? 1 : 3,
-    wood: 5,
-    knife: gameState.day >= 4 && gameState.day < 8 ? 1 : 0
+    canned_food: gameState.day >= 6 ? 1 : 4,
+    cloth: gameState.day >= 6 ? 1 : 3,
+    wood: 4,
+    knife: gameState.day >= 2 && gameState.day <= 5 ? 1 : 0
   };
 }
 
 function formatTime(totalMinutes) {
   const t = ((Math.floor(totalMinutes) % 1440) + 1440) % 1440;
-  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  const h = Math.floor(t / 60);
+  const m = t % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-function actualDateText() {
+function dateText() {
   const date = new Date(Date.UTC(1940, 3, 15 + gameState.day));
   return `1940/4/${date.getUTCDate()}　${gameState.day}日目`;
 }
 
 function currentNews() {
-  let result = NEWS[0];
+  let selected = NEWS[0];
   for (const news of NEWS) {
-    if (gameState.day >= news.day) result = news;
+    if (gameState.day >= news.day) selected = news;
   }
-  return result;
+  return selected;
+}
+
+function updateHud() {
+  dateEl.textContent = dateText();
+  timeEl.textContent = formatTime(gameState.time);
+  locationEl.textContent = SCENE_NAMES[runtime.scene];
+  moneyEl.textContent = `${gameState.town.money} kr`;
+  sceneNameEl.textContent = SCENE_NAMES[runtime.scene];
+}
+
+function setMessage(text) {
+  messageEl.textContent = text;
+}
+
+function clearPanel() {
+  panelEl.replaceChildren();
 }
 
 function makeButton(text, handler, className = '') {
@@ -168,428 +214,716 @@ function makeButton(text, handler, className = '') {
   return button;
 }
 
+function addPanelText(text) {
+  const div = document.createElement('div');
+  div.className = 'panel-text';
+  div.textContent = text;
+  panelEl.appendChild(div);
+}
+
 function advance(minutes) {
   addGameMinutes(minutes);
   refreshShopStock();
+  updateHud();
 }
 
-function updateHud() {
-  dateEl.textContent = actualDateText();
-  timeEl.textContent = formatTime(gameState.time);
-  locationEl.textContent = LOCATIONS[gameState.town.current].name;
-  moneyEl.textContent = `${gameState.town.money} kr`;
-}
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-function getAtmosphere() {
-  const hour = Math.floor(gameState.time / 60) % 24;
-  if (gameState.day >= 8) return '空襲後・煙の匂い';
-  if (hour < 7 || hour >= 20) return '暗い・人通り少なめ';
-  if (gameState.day >= 2) return '戦時下・人の出入りが多い';
-  return '曇天・冷たい風';
-}
+  const w = Math.max(1, Math.round(rect.width * dpr));
+  const h = Math.max(1, Math.round(rect.height * dpr));
 
-function sceneDetail(location) {
-  if (gameState.day < 8) return location.detail;
-
-  if (gameState.town.current === 'market') return '割れた窓と瓦礫。開いている店は少なく、通りを急ぐ人ばかりだ。';
-  if (gameState.town.current === 'station') return '駅舎の一部が傷み、貨物は急いで別の場所へ移されている。';
-  if (gameState.town.current === 'harbor') return '桟橋には破損した荷物と軍需品が残り、空を気にする人が多い。';
-  return `${location.detail}　窓に板を打ち付けた建物が増えている。`;
-}
-
-function renderScene() {
-  const id = gameState.town.current;
-  const location = LOCATIONS[id];
-
-  sceneArtEl.dataset.scene = id;
-  sceneArtEl.classList.toggle('damaged', gameState.day >= 8);
-  sceneWeatherEl.textContent = getAtmosphere();
-  sceneTitleEl.textContent = location.name;
-  sceneDetailEl.textContent = sceneDetail(location);
-  scenePeopleEl.textContent = `いる人：${location.people.map(id => NPCS[id].name).join('・')}`;
-}
-
-function addTitle(text) {
-  const div = document.createElement('div');
-  div.className = 'panel-title';
-  div.textContent = text;
-  actionsEl.appendChild(div);
-}
-
-function addLine(text) {
-  const div = document.createElement('div');
-  div.className = 'panel-line';
-  div.textContent = text;
-  actionsEl.appendChild(div);
-}
-
-function relationship(id, amount = 0) {
-  const rel = gameState.town.relationships;
-  rel[id] = (rel[id] || 0) + amount;
-  return rel[id];
-}
-
-function talkNpc(id) {
-  const npc = NPCS[id];
-  const town = gameState.town;
-  town.metNpcs[id] = true;
-  relationship(id, 0);
-  advance(5);
-
-  let text = '';
-
-  if (id === 'solveig') {
-    if (gameState.day >= 3 && town.flags.einar_found && !town.flags.solveig_resolved) {
-      town.flags.solveig_resolved = true;
-      relationship('solveig', 2);
-      const gift = addItem('canned_food', 1);
-      text = gift.success
-        ? '「見つけてくれたのね……ありがとう。これ、少しだけど持っていって」ソルヴェイから缶詰を1個もらった。'
-        : '「見つけてくれたのね……ありがとう。本当に助かったわ」';
-    } else if (gameState.day >= 3 && !town.flags.solveig_worry) {
-      town.flags.solveig_worry = true;
-      text = '「弟のエイナルが昨夜から戻ってこないの。駅の荷役を手伝っていたはずなんだけど……」';
-    } else if (town.flags.einar_seen && !town.flags.einar_found) {
-      text = '「港へ行ったの？　お願い、何かわかったら教えて」';
-    } else if (town.flags.solveig_resolved) {
-      text = '「エイナルはまだ足を引きずってるけど、家にいるわ。あなたのおかげよ」';
-    } else {
-      text = '「朝から汽笛が多いわね。こんなに町が騒がしいのは久しぶり」';
-    }
-  } else if (id === 'hakon') {
-    if (town.flags.solveig_worry && !town.flags.einar_seen) {
-      town.flags.einar_seen = true;
-      text = '「エイナル？　昨日の夕方、港へ貨物を運ぶ手伝いに行った。戻ったところは見てないな」';
-    } else {
-      text = gameState.day >= 5
-        ? '「貨物をここに置いておけない。空から丸見えだ。夜のうちに動かしてる」'
-        : '「人手が足りない。列車が着くたび、荷物が山になる」';
-    }
-  } else if (id === 'ingrid') {
-    if (town.flags.einar_seen && !town.flags.einar_found) {
-      town.flags.einar_found = true;
-      relationship('ingrid', 1);
-      text = '「若い駅員なら倉庫裏にいる。荷箱が崩れて脚を痛めたの。診療所へ連れていくところよ」';
-    } else {
-      text = gameState.day >= 2
-        ? '「兵士も荷物も次々来る。港が町じゃなくて軍の場所みたいになってきた」'
-        : '「海は静かだけど、今日は船の出入りが変に多いね」';
-    }
-  } else if (id === 'olav') {
-    text = gameState.day >= 5
-      ? '「時刻表なんてもう意味がない。列車は軍と避難民と荷物で動いてる」'
-      : '「南から来る列車は遅れている。駅から先の話は誰もはっきり言わない」';
-  } else if (id === 'marta') {
-    text = gameState.day >= 8
-      ? '「今日はこれだけ。次の荷が来る保証なんてないよ。必要な分だけにして」'
-      : '「缶詰と布はまだある。でも買い占めはなし。みんな必要なんだから」';
-  } else if (id === 'johan') {
-    text = gameState.day >= 6
-      ? '「小麦粉が減ってる。明日もパンを焼けるかは分からない」'
-      : '「戦争だろうが朝は来る。朝が来ればパンを焼く。それだけさ」';
-  } else if (id === 'ragnhild') {
-    text = gameState.day >= 8
-      ? '「記事を書く前に窓を塞ぐ仕事が増えた。でも町で起きたことは残しておかないと」'
-      : '「公式発表より、駅と港を歩いた方が早い。噂の半分は嘘だけどね」';
-  } else if (id === 'liv') {
-    if (gameState.day >= 4 && !town.flags.clinic_need) {
-      town.flags.clinic_need = true;
-      text = '「包帯に使える布が足りないの。きれいな布があったら持ってきてもらえる？」';
-    } else if (town.flags.clinic_helped) {
-      text = '「この前の布、もう使わせてもらったわ。助かった」';
-    } else {
-      text = '「怪我人が増えてる。眠れてない人も多いわ」';
-    }
-  } else if (id === 'doctor') {
-    text = gameState.day >= 6
-      ? '「妙な発熱と錯乱を起こす患者がいる。戦傷とは違う。まだ原因が分からない」'
-      : '「今は軽い怪我でも放っておかない方がいい。薬も人手も限られている」';
-  } else if (id === 'anders') {
-    text = gameState.day >= 8
-      ? '「壊れた窓も扉も直せる。木さえあればな。町は修理する場所だらけだ」'
-      : '「若い頃はこの辺も今より家が少なかった。駅ができて、町が一気に変わったよ」';
-  } else if (id === 'nils') {
-    text = gameState.day >= 6
-      ? '「昨夜、岸で人影を見た。呼んでも返事がない。酔っぱらいにしちゃ歩き方が変だった」'
-      : '「魚はいるさ。問題は獲った後に誰が買えるかだ」';
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
   }
 
-  messageEl.textContent = `${npc.name}：${text}`;
-  saveGameState();
-  renderAll(false);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 }
 
-function dailyAvailable(key) {
-  return gameState.town.daily[key] !== gameState.day;
+function addHotspot(id, label, x, y, w, h, action) {
+  runtime.hitboxes.push({ id, label, x, y, w, h, action });
 }
 
-function markDaily(key) {
-  gameState.town.daily[key] = gameState.day;
+function drawLabel(label, x, y) {
+  ctx.save();
+  ctx.font = '700 17px sans-serif';
+  const width = ctx.measureText(label).width + 18;
+  ctx.fillStyle = 'rgba(255,253,248,.90)';
+  ctx.strokeStyle = 'rgba(66,60,52,.70)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x - width / 2, y - 17, width, 32, 7);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#292725';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+  ctx.restore();
 }
 
-function performAction(action) {
-  const town = gameState.town;
-
-  if (action === 'read_news' || action === 'notice_board') {
-    advance(5);
-    const news = currentNews();
-    messageEl.textContent = `【${news.title}】${news.text}`;
-  }
-
-  if (action === 'hear_rumor') {
-    advance(5);
-    const rumors = gameState.day >= 6
-      ? ['夜の港で、呼びかけても返事をしない人影を見たという話。', '診療所に妙な高熱の患者が運ばれたらしい。', '軍が何かを隠している、と酒場で話していた人がいる。']
-      : ['港にさらに船が来るらしい。', '駅には夜中まで貨物列車が入っている。', '食料品店では入荷が遅れ始めている。'];
-    messageEl.textContent = `噂：${rumors[(gameState.day + gameState.time) % rumors.length | 0]}`;
-  }
-
-  if (action === 'harbor_work') {
-    if (!dailyAvailable('harbor_work')) {
-      messageEl.textContent = '今日はもう十分手伝いました。';
-    } else {
-      markDaily('harbor_work');
-      advance(25);
-      town.money += 3;
-      relationship('ingrid', 1);
-      messageEl.textContent = '荷下ろしを手伝った。3 kr受け取った。';
-    }
-  }
-
-  if (action === 'shore_search') {
-    if (!dailyAvailable('shore_search')) {
-      messageEl.textContent = '今日はもうこの辺を探しました。';
-    } else {
-      markDaily('shore_search');
-      advance(10);
-      const result = addItem('small_stone', 2);
-      messageEl.textContent = result.success ? `岸辺で小石を${result.added || 2}個拾った。` : '持ち物がいっぱいで拾えませんでした。';
-    }
-  }
-
-  if (action === 'alley_search') {
-    if (!dailyAvailable('alley_search')) {
-      messageEl.textContent = '今日はもう路地を探しました。';
-    } else {
-      markDaily('alley_search');
-      advance(12);
-      const itemId = gameState.day % 2 === 0 ? 'cloth' : 'small_stone';
-      const result = addItem(itemId, 1);
-      messageEl.textContent = result.success ? `${getItemName(itemId)}を1個見つけた。` : '使えそうな物はあったが、これ以上持てません。';
-    }
-  }
-
-  if (action === 'cargo_search') {
-    advance(7);
-    messageEl.textContent = gameState.day >= 5
-      ? '貨物置場はほとんど空だ。木箱には急いで移動させた跡が残っている。'
-      : '木箱、郵袋、軍用らしい荷物。宛先を塗りつぶした箱も混じっている。';
-  }
-
-  if (action === 'clinic_help') {
-    if (!town.flags.clinic_need) {
-      messageEl.textContent = '今は頼まれている物はありません。';
-    } else if (town.flags.clinic_helped) {
-      messageEl.textContent = '渡した布はすでに診療所で使われています。';
-    } else if (getItemCount('cloth') < 1) {
-      messageEl.textContent = '渡せる布を持っていません。';
-    } else {
-      const removed = removeItem('cloth', 1);
-      if (removed.success) {
-        town.flags.clinic_helped = true;
-        relationship('liv', 2);
-        advance(5);
-        messageEl.textContent = '布を1枚、診療所へ渡した。リヴが何度も礼を言った。';
-      }
-    }
-  }
-
-  saveGameState();
-  renderAll(false);
-}
-
-function buyItem(itemId) {
-  const town = gameState.town;
-  const info = SHOP[itemId];
-  const stock = town.shopStock[itemId] || 0;
-
-  if (stock <= 0) {
-    messageEl.textContent = '今日は売り切れです。';
+function drawSkyAndGround(width, height, indoor = false) {
+  if (indoor) {
+    ctx.fillStyle = '#d6cab6';
+    ctx.fillRect(0, 0, width, height * 0.72);
+    ctx.fillStyle = '#8b7259';
+    ctx.fillRect(0, height * 0.72, width, height * 0.28);
     return;
   }
 
-  if (town.money < info.price) {
-    messageEl.textContent = 'お金が足りません。';
+  ctx.fillStyle = '#bcc9ca';
+  ctx.fillRect(0, 0, width, height * 0.68);
+  ctx.fillStyle = '#8b8375';
+  ctx.fillRect(0, height * 0.68, width, height * 0.32);
+}
+
+function drawBuilding(x, groundY, w, h, wall, roof, sign = '') {
+  ctx.fillStyle = wall;
+  ctx.fillRect(x, groundY - h, w, h);
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(x - 8, groundY - h);
+  ctx.lineTo(x + w / 2, groundY - h - 38);
+  ctx.lineTo(x + w + 8, groundY - h);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#554b40';
+  ctx.fillRect(x + w * 0.42, groundY - 70, 42, 70);
+  ctx.fillStyle = '#b9c7c5';
+  ctx.fillRect(x + 14, groundY - h + 25, 48, 45);
+
+  if (sign) {
+    ctx.fillStyle = '#f2eadb';
+    ctx.strokeStyle = '#665b4e';
+    ctx.fillRect(x + 8, groundY - h + 84, w - 16, 32);
+    ctx.strokeRect(x + 8, groundY - h + 84, w - 16, 32);
+    ctx.fillStyle = '#332f2a';
+    ctx.font = '700 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sign, x + w / 2, groundY - h + 106);
+  }
+}
+
+function drawStreet(width, height) {
+  drawSkyAndGround(width, height, false);
+  const groundY = height * 0.78;
+
+  drawBuilding(width * 0.03, groundY, width * 0.25, height * 0.44, '#b89b78', '#6d6257', '食料品店');
+  drawBuilding(width * 0.30, groundY, width * 0.25, height * 0.49, '#c5b79d', '#5f5a52', '駅');
+  drawBuilding(width * 0.58, groundY, width * 0.22, height * 0.42, '#d2cec2', '#6a655d', '診療所');
+
+  ctx.fillStyle = '#778e95';
+  ctx.fillRect(width * 0.82, height * 0.33, width * 0.18, height * 0.35);
+  ctx.fillStyle = '#655c51';
+  ctx.fillRect(width * 0.82, height * 0.68, width * 0.18, height * 0.10);
+
+  ctx.fillStyle = '#776957';
+  ctx.fillRect(width * 0.46, groundY - 48, 34, 48);
+  ctx.fillStyle = '#ede6d7';
+  ctx.fillRect(width * 0.455, groundY - 64, 44, 25);
+
+  if (gameState.day >= 5) {
+    ctx.fillStyle = 'rgba(70,65,60,.22)';
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = '#413c37';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.09, groundY - 160);
+    ctx.lineTo(width * 0.18, groundY - 92);
+    ctx.stroke();
+  }
+
+  addHotspot('grocery', '入る', width * 0.05, groundY - 160, width * 0.22, 160, () => travelTo('grocery'));
+  addHotspot('station', '駅', width * 0.31, groundY - 180, width * 0.23, 180, () => travelTo('station'));
+  addHotspot('clinic', '診療所', width * 0.59, groundY - 160, width * 0.21, 160, () => travelTo('clinic'));
+  addHotspot('harbor', '港へ →', width * 0.82, groundY - 95, width * 0.17, 110, () => travelTo('harbor'));
+  addHotspot('news', '新聞', width * 0.43, groundY - 80, 80, 85, showNews);
+  addHotspot('solveig', 'ソルヴェイ', width * 0.19, groundY - 58, 70, 65, talkSolveig);
+
+  drawLabel('食料品店', width * 0.155, groundY - 180);
+  drawLabel('駅', width * 0.425, groundY - 205);
+  drawLabel('診療所', width * 0.69, groundY - 180);
+  drawLabel('港 →', width * 0.91, groundY - 115);
+  drawLabel('新聞', width * 0.49, groundY - 90);
+  drawLabel('ソルヴェイ', width * 0.19, groundY - 70);
+}
+
+function drawGrocery(width, height) {
+  drawSkyAndGround(width, height, true);
+  const groundY = height * 0.79;
+
+  ctx.fillStyle = '#806b52';
+  ctx.fillRect(width * 0.06, groundY - 190, width * 0.24, 190);
+  ctx.fillRect(width * 0.36, groundY - 190, width * 0.24, 190);
+  ctx.fillStyle = '#6a5744';
+  for (let i = 0; i < 3; i += 1) {
+    const y = groundY - 55 - i * 55;
+    ctx.fillRect(width * 0.06, y, width * 0.24, 8);
+    ctx.fillRect(width * 0.36, y, width * 0.24, 8);
+  }
+
+  ctx.fillStyle = '#80664d';
+  ctx.fillRect(width * 0.66, groundY - 82, width * 0.24, 82);
+  ctx.fillStyle = '#4f4338';
+  ctx.fillRect(width * 0.86, groundY - 210, width * 0.12, 210);
+
+  ctx.fillStyle = '#4f5a52';
+  ctx.beginPath();
+  ctx.arc(width * 0.74, groundY - 115, 17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(width * 0.72, groundY - 100, 22, 48);
+
+  if (gameState.day >= 6) {
+    ctx.strokeStyle = '#534c45';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.10, groundY - 172);
+    ctx.lineTo(width * 0.25, groundY - 130);
+    ctx.stroke();
+  }
+
+  addHotspot('shelfA', '棚を漁る', width * 0.05, groundY - 200, width * 0.27, 205, () => lootSpot('groceryShelfA', LOOT.groceryShelfA));
+  addHotspot('shelfB', '棚を漁る', width * 0.35, groundY - 200, width * 0.27, 205, () => lootSpot('groceryShelfB', LOOT.groceryShelfB));
+  addHotspot('marta', 'マルタ', width * 0.67, groundY - 170, width * 0.13, 130, talkMarta);
+  addHotspot('back', '奥を調べる', width * 0.84, groundY - 220, width * 0.15, 225, searchBackRoom);
+  addHotspot('exit', '外へ', 0, groundY - 90, width * 0.08, 95, () => travelTo('street'));
+
+  drawLabel('棚', width * 0.18, groundY - 205);
+  drawLabel('棚', width * 0.48, groundY - 205);
+  drawLabel('マルタ', width * 0.74, groundY - 150);
+  drawLabel('奥', width * 0.92, groundY - 225);
+  drawLabel('← 外', width * 0.07, groundY - 105);
+}
+
+function drawStation(width, height) {
+  drawSkyAndGround(width, height, true);
+  const groundY = height * 0.79;
+
+  ctx.fillStyle = '#9a8a74';
+  ctx.fillRect(0, groundY - 48, width, 48);
+  ctx.strokeStyle = '#4f4b45';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, groundY - 18);
+  ctx.lineTo(width, groundY - 18);
+  ctx.stroke();
+
+  ctx.fillStyle = '#7d684e';
+  ctx.fillRect(width * 0.12, groundY - 80, width * 0.20, 80);
+  ctx.fillRect(width * 0.67, groundY - 72, width * 0.18, 72);
+
+  ctx.fillStyle = '#e8e1d4';
+  ctx.fillRect(width * 0.40, groundY - 190, width * 0.18, 115);
+  ctx.strokeStyle = '#61594e';
+  ctx.strokeRect(width * 0.40, groundY - 190, width * 0.18, 115);
+
+  const injured = gameState.day >= 2 && !gameState.town.flags.porterHelped;
+  if (injured) {
+    ctx.fillStyle = '#6c5d55';
+    ctx.beginPath();
+    ctx.arc(width * 0.58, groundY - 55, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(width * 0.56, groundY - 42, 25, 38);
+  }
+
+  if (gameState.day >= 5) {
+    ctx.fillStyle = 'rgba(64,58,54,.20)';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  addHotspot('crate', '木箱', width * 0.10, groundY - 95, width * 0.24, 100, () => lootSpot('stationCrate', LOOT.stationCrate));
+  addHotspot('notice', '掲示板', width * 0.39, groundY - 205, width * 0.20, 140, showNews);
+  addHotspot('bench', 'ベンチ', width * 0.67, groundY - 90, width * 0.20, 95, () => lootSpot('stationBench', LOOT.stationBench));
+  if (injured) addHotspot('porter', '負傷した荷役係', width * 0.52, groundY - 100, width * 0.15, 105, injuredPorter);
+  addHotspot('exit', '外へ', 0, groundY - 90, width * 0.08, 95, () => travelTo('street'));
+
+  drawLabel('木箱', width * 0.22, groundY - 105);
+  drawLabel('掲示板', width * 0.49, groundY - 215);
+  drawLabel('ベンチ', width * 0.77, groundY - 100);
+  if (injured) drawLabel('負傷者', width * 0.59, groundY - 115);
+  drawLabel('← 外', width * 0.07, groundY - 105);
+}
+
+function drawHarbor(width, height) {
+  ctx.fillStyle = '#aebfc4';
+  ctx.fillRect(0, 0, width, height * 0.45);
+  ctx.fillStyle = '#748e96';
+  ctx.fillRect(0, height * 0.45, width, height * 0.27);
+  ctx.fillStyle = '#746758';
+  ctx.fillRect(0, height * 0.72, width, height * 0.28);
+  const groundY = height * 0.80;
+
+  ctx.fillStyle = '#7d684e';
+  ctx.fillRect(width * 0.18, groundY - 78, width * 0.22, 78);
+  ctx.fillStyle = '#6b5947';
+  ctx.fillRect(width * 0.48, groundY - 95, width * 0.18, 95);
+
+  ctx.fillStyle = '#55645d';
+  ctx.beginPath();
+  ctx.arc(width * 0.75, groundY - 85, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(width * 0.73, groundY - 70, 24, 50);
+
+  if (gameState.day >= 5) {
+    ctx.fillStyle = 'rgba(58,55,52,.16)';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#5d5650';
+    ctx.fillRect(width * 0.51, groundY - 110, 8, 110);
+  }
+
+  addHotspot('crate', '荷箱', width * 0.16, groundY - 98, width * 0.27, 105, () => lootSpot('harborCrate', LOOT.harborCrate));
+  addHotspot('shore', '岸辺', width * 0.45, groundY - 118, width * 0.23, 125, () => lootSpot('harborShore', LOOT.harborShore));
+  addHotspot('ingrid', 'イングリッド', width * 0.69, groundY - 130, width * 0.15, 130, talkIngrid);
+  addHotspot('exit', '町へ', 0, groundY - 95, width * 0.10, 100, () => travelTo('street'));
+
+  drawLabel('荷箱', width * 0.29, groundY - 110);
+  drawLabel('岸辺', width * 0.57, groundY - 130);
+  drawLabel('イングリッド', width * 0.76, groundY - 145);
+  drawLabel('← 町', width * 0.08, groundY - 110);
+}
+
+function drawClinic(width, height) {
+  drawSkyAndGround(width, height, true);
+  const groundY = height * 0.79;
+
+  ctx.fillStyle = '#ede9de';
+  ctx.fillRect(width * 0.06, groundY - 115, width * 0.34, 80);
+  ctx.fillStyle = '#d2d8d5';
+  ctx.fillRect(width * 0.08, groundY - 105, width * 0.30, 42);
+
+  ctx.fillStyle = '#91826e';
+  ctx.fillRect(width * 0.67, groundY - 180, width * 0.22, 180);
+
+  ctx.fillStyle = '#53645e';
+  ctx.beginPath();
+  ctx.arc(width * 0.54, groundY - 96, 16, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(width * 0.52, groundY - 80, 24, 52);
+
+  if (gameState.day >= 7) {
+    ctx.fillStyle = '#6f625b';
+    ctx.beginPath();
+    ctx.arc(width * 0.24, groundY - 88, 13, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  addHotspot('cabinet', '薬品棚', width * 0.66, groundY - 195, width * 0.24, 200, () => lootSpot('clinicCabinet', LOOT.clinicCabinet));
+  addHotspot('nurse', 'リヴ', width * 0.48, groundY - 140, width * 0.14, 140, talkLiv);
+  if (gameState.day >= 7) addHotspot('patient', '患者', width * 0.14, groundY - 130, width * 0.20, 135, strangePatient);
+  addHotspot('exit', '外へ', 0, groundY - 90, width * 0.08, 95, () => travelTo('street'));
+
+  drawLabel('薬品棚', width * 0.78, groundY - 205);
+  drawLabel('リヴ', width * 0.55, groundY - 150);
+  if (gameState.day >= 7) drawLabel('患者', width * 0.24, groundY - 145);
+  drawLabel('← 外', width * 0.07, groundY - 105);
+}
+
+function drawPlayer(width, height) {
+  const frame = playerFrames[runtime.frame];
+  if (!frame || !frame.complete || !frame.naturalWidth) return;
+
+  const groundY = height * 0.82;
+  const x = runtime.playerX;
+  const y = groundY - 48;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (runtime.direction < 0) {
+    ctx.translate(x, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(frame, -16, y, 32, 48);
+  } else {
+    ctx.drawImage(frame, x - 16, y, 32, 48);
+  }
+  ctx.restore();
+}
+
+function drawNightOverlay(width, height) {
+  const hour = (gameState.time / 60) % 24;
+  let alpha = 0;
+  if (hour >= 20 || hour < 5) alpha = 0.48;
+  else if (hour >= 18) alpha = (hour - 18) * 0.18;
+  else if (hour < 7) alpha = (7 - hour) * 0.18;
+
+  if (alpha > 0) {
+    ctx.fillStyle = `rgba(18,24,31,${Math.min(alpha, 0.55)})`;
+    ctx.fillRect(0, 0, width, height);
+  }
+}
+
+function drawScene() {
+  resizeCanvas();
+  runtime.hitboxes = [];
+
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  ctx.clearRect(0, 0, width, height);
+
+  if (runtime.scene === 'street') drawStreet(width, height);
+  else if (runtime.scene === 'grocery') drawGrocery(width, height);
+  else if (runtime.scene === 'station') drawStation(width, height);
+  else if (runtime.scene === 'harbor') drawHarbor(width, height);
+  else if (runtime.scene === 'clinic') drawClinic(width, height);
+
+  drawPlayer(width, height);
+  drawNightOverlay(width, height);
+}
+
+function travelTo(sceneId) {
+  if (!SCENE_NAMES[sceneId]) return;
+
+  advance(sceneId === 'harbor' || runtime.scene === 'harbor' ? 8 : 5);
+  runtime.scene = sceneId;
+  gameState.town.scene = sceneId;
+  runtime.playerX = canvas.clientWidth * 0.13;
+  runtime.targetX = runtime.playerX;
+  clearPanel();
+  setLocation(SCENE_NAMES[sceneId]);
+  saveGameState();
+  updateHud();
+  setMessage(`${SCENE_NAMES[sceneId]}に来た。画面の物や人を直接タップできます。`);
+  drawScene();
+}
+
+function showInventory() {
+  clearPanel();
+  const entries = getInventoryEntries();
+
+  if (!entries.length) {
+    addPanelText('持ち物はありません。');
+    return;
+  }
+
+  addPanelText(entries.map((e) => `${e.name}×${e.count}`).join('　'));
+}
+
+function showNews() {
+  advance(3);
+  const news = currentNews();
+  clearPanel();
+  addPanelText(`【${news.title}】\n${news.text}`);
+  setMessage('掲示された記事を読んだ。');
+  gameState.town.flags.lastNewsDay = gameState.day;
+  saveGameState();
+}
+
+function talkSolveig() {
+  advance(4);
+  clearPanel();
+
+  let text;
+  if (gameState.day === 1) {
+    text = '「港も駅も、朝からずっと騒がしいわ。食べ物は少し多めに買っておいた方がいいかもしれない」';
+  } else if (gameState.day < 5) {
+    text = '「昨夜も汽笛が聞こえたわ。眠れなかった。あなたも暗くなる前には帰ってきて」';
+  } else {
+    text = '「向こうの家、昨日の爆撃で窓が全部割れたの。ここもいつまで無事か……」';
+  }
+
+  addPanelText(`ソルヴェイ\n${text}`);
+  setMessage('隣人のソルヴェイと話した。');
+}
+
+function talkMarta() {
+  advance(3);
+  clearPanel();
+
+  if (gameState.day >= 7) {
+    addPanelText('マルタ「もう棚にほとんど残ってない。売れる物だけ出しておくよ」');
+  } else {
+    addPanelText('マルタ「必要な物があるなら今のうちに。次の荷が来る保証はないよ」');
+  }
+
+  const goods = [
+    ['canned_food', 3],
+    ['cloth', 2],
+    ['wood', 1],
+    ['knife', 12]
+  ];
+
+  for (const [itemId, price] of goods) {
+    const stock = gameState.town.shopStock[itemId] || 0;
+    if (stock <= 0) continue;
+
+    panelEl.appendChild(makeButton(
+      `${getItemName(itemId)}　${price}kr　残${stock}`,
+      () => buyItem(itemId, price),
+      'safe'
+    ));
+  }
+}
+
+function buyItem(itemId, price) {
+  if ((gameState.town.shopStock[itemId] || 0) <= 0) {
+    setMessage('売り切れです。');
+    talkMarta();
+    return;
+  }
+
+  if (gameState.town.money < price) {
+    setMessage('お金が足りません。');
     return;
   }
 
   const result = addItem(itemId, 1);
   if (!result.success) {
-    messageEl.textContent = 'これ以上持てません。';
+    setMessage('これ以上持てません。');
     return;
   }
 
-  town.money -= info.price;
-  town.shopStock[itemId] -= 1;
-  advance(3);
-  messageEl.textContent = `${getItemName(itemId)}を1個買った。`;
+  gameState.town.money -= price;
+  gameState.town.shopStock[itemId] -= 1;
+  advance(2);
   saveGameState();
-  renderAll(false);
+  updateHud();
+  setMessage(`${getItemName(itemId)}を1個買いました。`);
+  talkMarta();
 }
 
-function renderShop() {
-  actionsEl.replaceChildren();
-  addTitle('マルタの店');
+function talkIngrid() {
+  advance(3);
+  clearPanel();
 
-  for (const [itemId, info] of Object.entries(SHOP)) {
-    const stock = gameState.town.shopStock[itemId] || 0;
-    actionsEl.appendChild(
-      makeButton(`${getItemName(itemId)}　${info.price} kr　残${stock}`, () => buyItem(itemId), stock > 0 ? 'primary' : '')
-    );
+  if (gameState.town.flags.porterHelped && !gameState.town.flags.porterThanksSeen) {
+    gameState.town.flags.porterThanksSeen = true;
+    addPanelText('イングリッド「駅のホーコンを助けたんだって？　さっき港の連中もその話をしてたよ」');
+  } else {
+    addPanelText('イングリッド「荷物が増えるばかりで、人手が足りない。少し働くなら賃金は出すよ」');
   }
 
-  actionsEl.appendChild(makeButton('店を出る', () => renderAll(false)));
-}
-
-function actionLabel(action) {
-  return {
-    alley_search: '路地を探す',
-    notice_board: '掲示板を読む',
-    cargo_search: '貨物置場を見る',
-    harbor_work: '荷下ろしを手伝う',
-    shore_search: '岸辺を探す',
-    shop: '店で買う',
-    read_news: '最新号を読む',
-    hear_rumor: '噂を聞く',
-    clinic_help: '診療所を手伝う'
-  }[action];
-}
-
-function renderActions() {
-  actionsEl.replaceChildren();
-  const location = LOCATIONS[gameState.town.current];
-
-  addTitle('この場所ですること');
-
-  for (const id of location.people) {
-    const npc = NPCS[id];
-    actionsEl.appendChild(makeButton(`${npc.name}に話す\n${npc.role}`, () => talkNpc(id), 'primary'));
+  const key = `harborWorkDay${gameState.day}`;
+  if (!gameState.town.daily[key]) {
+    panelEl.appendChild(makeButton('荷下ろしを手伝う　+4kr / 25分', doHarborWork, 'safe'));
   }
 
-  for (const action of location.actions) {
-    if (action === 'shop') {
-      actionsEl.appendChild(makeButton(actionLabel(action), renderShop));
-    } else {
-      actionsEl.appendChild(makeButton(actionLabel(action), () => performAction(action)));
+  saveGameState();
+}
+
+function doHarborWork() {
+  const key = `harborWorkDay${gameState.day}`;
+  if (gameState.town.daily[key]) {
+    setMessage('今日はもう十分働きました。');
+    return;
+  }
+
+  gameState.town.daily[key] = true;
+  gameState.town.money += 4;
+  advance(25);
+  saveGameState();
+  updateHud();
+  setMessage('荷下ろしを手伝って4kr受け取りました。');
+  talkIngrid();
+}
+
+function injuredPorter() {
+  clearPanel();
+  addPanelText('駅の荷役係ホーコンが、脚から血を流して壁際に座り込んでいる。');
+
+  if (hasItem('cloth', 1)) {
+    panelEl.appendChild(makeButton('布を1枚使って手当てする', () => {
+      const removed = removeItem('cloth', 1);
+      if (!removed.success) return;
+      gameState.town.flags.porterHelped = true;
+      advance(12);
+      saveGameState();
+      setMessage('傷を縛って止血した。ホーコンは何度も礼を言った。');
+      clearPanel();
+      drawScene();
+    }, 'safe'));
+  } else {
+    addPanelText('傷を縛れそうな布を持っていません。');
+  }
+}
+
+function talkLiv() {
+  advance(4);
+  clearPanel();
+
+  if (gameState.day >= 7) {
+    addPanelText('リヴ「高熱の患者が増えてる。でも、熱だけじゃないの。噛みつこうとする人までいる……」');
+  } else if (gameState.town.flags.porterHelped) {
+    addPanelText('リヴ「駅の負傷者に応急手当てをしたそうね。助かったわ。今は怪我人が多すぎるの」');
+  } else {
+    addPanelText('リヴ「包帯も消毒薬も足りない。まだ町が静かなうちに備えないと」');
+  }
+
+  setMessage('看護師のリヴと話した。');
+}
+
+function strangePatient() {
+  advance(3);
+  clearPanel();
+
+  if (!gameState.town.flags.strangePatientSeen) {
+    gameState.town.flags.strangePatientSeen = true;
+    addPanelText('ベッドの男は汗だくで、手首を革帯で固定されている。こちらを見ると、歯をむき出して低く唸った。');
+    setMessage('普通の負傷者には見えない。');
+  } else {
+    addPanelText('男は返事をしない。呼吸だけが荒い。近づくとリヴに止められた。');
+  }
+
+  saveGameState();
+}
+
+function searchBackRoom() {
+  if (gameState.day < 5 && !gameState.town.flags.backRoomOpened) {
+    clearPanel();
+    addPanelText('奥の扉には鍵が掛かっている。');
+
+    if (hasItem('knife', 1)) {
+      panelEl.appendChild(makeButton('ナイフで古い掛け金を外す　15分', () => {
+        gameState.town.flags.backRoomOpened = true;
+        advance(15);
+        saveGameState();
+        setMessage('掛け金を外して奥へ入れるようになった。');
+        clearPanel();
+        drawScene();
+      }, 'warn'));
+    }
+    return;
+  }
+
+  gameState.town.flags.backRoomOpened = true;
+  lootSpot('groceryBack', LOOT.groceryBack, 12);
+}
+
+function lootSpot(key, pool, minutes = 8) {
+  const record = gameState.town.loot[key];
+
+  if (record && record.day === gameState.day) {
+    setMessage('今日はもう調べました。残っている物はなさそうです。');
+    clearPanel();
+    return;
+  }
+
+  gameState.town.loot[key] = { day: gameState.day };
+  advance(minutes);
+
+  const found = [];
+  for (const [itemId, baseChance] of pool) {
+    let chance = baseChance;
+    if (gameState.day >= 6 && key.startsWith('grocery')) chance *= 0.55;
+    if (Math.random() <= chance) {
+      const result = addItem(itemId, 1);
+      if (result.success) found.push(getItemName(itemId));
     }
   }
-}
-
-function moveTo(id) {
-  if (!LOCATIONS[id] || id === gameState.town.current) return;
-
-  advance(10);
-  gameState.town.current = id;
-  setLocation(LOCATIONS[id].name);
-
-  if (gameState.day >= 8 && gameState.town.daily.air_raid !== gameState.day) {
-    gameState.town.daily.air_raid = gameState.day;
-    advance(15);
-    messageEl.textContent = '警報。低い爆音が町の上を通り、しばらく建物の陰で待った。';
-  } else {
-    messageEl.textContent = `${LOCATIONS[id].name}へ移動した。`;
-  }
 
   saveGameState();
-  renderAll(false);
+  clearPanel();
+
+  if (!found.length) {
+    setMessage('探しましたが、持ち帰れる物は見つかりませんでした。');
+    return;
+  }
+
+  setMessage(`${found.join('、')}を見つけて持ち帰りました。`);
+  showInventory();
 }
 
-function goHome() {
-  advance(10);
+function queueHotspot(box) {
+  if (runtime.moving) return;
+
+  clearPanel();
+  runtime.targetX = box.x + box.w / 2;
+  runtime.direction = runtime.targetX < runtime.playerX ? -1 : 1;
+  runtime.pendingAction = box.action;
+
+  if (Math.abs(runtime.targetX - runtime.playerX) < 12) {
+    const action = runtime.pendingAction;
+    runtime.pendingAction = null;
+    if (action) action();
+    return;
+  }
+
+  runtime.moving = true;
+  setMessage(`${box.label}へ移動中……`);
+}
+
+function handlePointer(event) {
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
+
+  for (let i = runtime.hitboxes.length - 1; i >= 0; i -= 1) {
+    const box = runtime.hitboxes[i];
+    if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) {
+      queueHotspot(box);
+      return;
+    }
+  }
+
+  clearPanel();
+  setMessage('建物、人、棚、箱などを直接タップしてください。');
+}
+
+function update(timestamp) {
+  if (!runtime.lastTimestamp) runtime.lastTimestamp = timestamp;
+  const dt = Math.min((timestamp - runtime.lastTimestamp) / 1000, 0.05);
+  runtime.lastTimestamp = timestamp;
+
+  if (runtime.moving) {
+    const distance = runtime.targetX - runtime.playerX;
+    const step = 190 * dt;
+
+    if (Math.abs(distance) <= step) {
+      runtime.playerX = runtime.targetX;
+      runtime.moving = false;
+      runtime.frame = 0;
+      runtime.frameTimer = 0;
+
+      const action = runtime.pendingAction;
+      runtime.pendingAction = null;
+      if (action) action();
+    } else {
+      runtime.playerX += Math.sign(distance) * step;
+      runtime.frameTimer += dt;
+      if (runtime.frameTimer >= 0.13) {
+        runtime.frameTimer -= 0.13;
+        runtime.frame = (runtime.frame + 1) % playerFrames.length;
+      }
+    }
+  }
+
+  drawScene();
+  requestAnimationFrame(update);
+}
+
+function returnHome() {
+  gameState.town.scene = 'street';
   setLocation('自宅');
   saveGameState();
   window.location.href = 'zombie_home.html';
 }
 
-function renderRoutes() {
-  routesEl.replaceChildren();
-  const location = LOCATIONS[gameState.town.current];
-
-  for (const id of location.routes) {
-    routesEl.appendChild(makeButton(`→ ${LOCATIONS[id].name}`, () => moveTo(id)));
-  }
-
-  routesEl.appendChild(makeButton('自宅へ戻る', goHome, 'home'));
-}
-
-function showNewsPanel() {
-  actionsEl.replaceChildren();
-  const news = currentNews();
-  addTitle('今日のニュース');
-  addLine(`【${news.title}】\n${news.text}`);
-  addLine('ニュースは町の状況やNPCの会話に反映されます。');
-}
-
-function npcStatus(id) {
-  const flags = gameState.town.flags;
-  if (id === 'solveig' && flags.solveig_resolved) return '弟が戻り、少し落ち着いている';
-  if (id === 'solveig' && flags.solveig_worry) return '弟エイナルを心配している';
-  if (id === 'liv' && flags.clinic_helped) return '診療所で負傷者の対応中';
-  if (id === 'liv' && flags.clinic_need) return '布を必要としている';
-  if (gameState.day >= 8) return '空襲後の対応に追われている';
-  return '町で普段の仕事を続けている';
-}
-
-function showPeoplePanel() {
-  actionsEl.replaceChildren();
-  addTitle('知っている人');
-
-  const met = Object.keys(gameState.town.metNpcs).filter(id => gameState.town.metNpcs[id]);
-  if (!met.length) {
-    addLine('まだ名前を知っている人はいません。町で話しかけてみてください。');
-    return;
-  }
-
-  for (const id of met) {
-    const npc = NPCS[id];
-    addLine(`${npc.name}（${npc.role}）　親しさ ${relationship(id, 0)}\n${npcStatus(id)}`);
-  }
-}
-
-function showInventoryPanel() {
-  actionsEl.replaceChildren();
-  addTitle(`持ち物　所持金 ${gameState.town.money} kr`);
-  const entries = getInventoryEntries();
-  if (!entries.length) {
-    addLine('持ち物なし');
-    return;
-  }
-  for (const entry of entries) addLine(`${entry.name} ×${entry.count}`);
-}
-
-function showMapPanel() {
-  actionsEl.replaceChildren();
-  addTitle('町の地点');
-  for (const [id, location] of Object.entries(LOCATIONS)) {
-    actionsEl.appendChild(makeButton(location.name, () => moveTo(id), id === gameState.town.current ? 'primary' : ''));
-  }
-  actionsEl.appendChild(makeButton('自宅へ戻る', goHome, 'primary'));
-}
-
-function renderAll(setMessage = true) {
+function init() {
+  ensureTownState();
+  setLocation(SCENE_NAMES[runtime.scene]);
   updateHud();
-  renderScene();
-  renderActions();
-  renderRoutes();
-  if (setMessage) messageEl.textContent = '町へ出ました。人に話す、店を見る、情報を集める、物資を探すことができます。';
+  setMessage('町に出ました。画面の建物・人・物を直接タップしてください。');
+  resizeCanvas();
+  runtime.playerX = canvas.clientWidth * 0.12;
+  runtime.targetX = runtime.playerX;
+  drawScene();
+  requestAnimationFrame(update);
 }
 
-newsButton.addEventListener('click', showNewsPanel);
-peopleButton.addEventListener('click', showPeoplePanel);
-inventoryButton.addEventListener('click', showInventoryPanel);
-mapButton.addEventListener('click', showMapPanel);
+canvas.addEventListener('pointerup', handlePointer);
+inventoryButton.addEventListener('click', showInventory);
+homeButton.addEventListener('click', returnHome);
 
-ensureTownState();
-setLocation(LOCATIONS[gameState.town.current].name);
-saveGameState();
-renderAll(true);
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  runtime.playerX = Math.min(runtime.playerX, canvas.clientWidth - 30);
+  runtime.targetX = runtime.playerX;
+  drawScene();
+});
+
+window.addEventListener('pagehide', saveGameState);
+
+init();
