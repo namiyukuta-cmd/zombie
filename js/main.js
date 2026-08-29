@@ -10,23 +10,70 @@ import {
   playerAttack,
   playerPush,
   playerEscape,
-  setWeapon,
+  playerRangedAttack,
   getCombatStatusText,
+  getCurrentRangedWeapon,
   isInCombat,
   endCombat
 } from './combat.js';
 
+import {
+  getItemName
+} from './items.js';
 
-const canvas = document.getElementById('world');
-const ctx = canvas.getContext('2d');
+import {
+  addItem,
+  hasItem,
+  getInventoryText
+} from './inventory.js';
 
-const dateEl = document.getElementById('date');
-const timeEl = document.getElementById('time');
-const locationEl = document.getElementById('location');
-const lightLevelEl = document.getElementById('light-level');
-const messageEl = document.getElementById('message');
-const controlsEl = document.getElementById('controls');
+import {
+  gameState,
+  saveGameState,
+  addGameMinutes as saveAddGameMinutes,
+  equipMeleeWeapon,
+  equipRangedWeapon,
+  markItemPicked,
+  isItemPicked,
+  isZombieDefeated
+} from './game-state.js';
 
+
+/* =========================
+   DOM
+========================= */
+
+const canvas =
+  document.getElementById('world');
+
+const ctx =
+  canvas.getContext('2d');
+
+const gameArea =
+  document.getElementById('game-area');
+
+const dateEl =
+  document.getElementById('date');
+
+const timeEl =
+  document.getElementById('time');
+
+const locationEl =
+  document.getElementById('location');
+
+const lightLevelEl =
+  document.getElementById('light-level');
+
+const messageEl =
+  document.getElementById('message');
+
+const controlsEl =
+  document.getElementById('controls');
+
+
+/* =========================
+   主人公画像
+========================= */
 
 const PLAYER_WALK_SOURCES = [
   'assets/player/player_walk_01.png',
@@ -35,96 +82,147 @@ const PLAYER_WALK_SOURCES = [
   'assets/player/player_walk_04.png'
 ];
 
-const playerWalkFrames = PLAYER_WALK_SOURCES.map((src) => {
-  const image = new Image();
+const playerWalkFrames =
+  PLAYER_WALK_SOURCES.map(
+    (src) => {
+      const image = new Image();
 
-  image.src = src;
+      image.src = src;
 
-  image.addEventListener('load', () => {
-    drawWorld();
-  });
+      image.addEventListener(
+        'load',
+        () => {
+          drawWorld();
+        }
+      );
 
-  return image;
-});
+      return image;
+    }
+  );
 
+
+/* =========================
+   距離
+========================= */
 
 const HOME_DOOR_X = 334;
+
 const HOME_DISTANCE = 55;
+
 const PICKUP_DISTANCE = 38;
 
 
+/* =========================
+   ゾンビ初期化
+========================= */
+
+function createWorldZombies() {
+  const zombies =
+    createDefaultZombies();
+
+  for (const zombie of zombies) {
+    if (
+      isZombieDefeated(
+        zombie.id
+      )
+    ) {
+      zombie.hp = 0;
+      zombie.alive = false;
+    }
+  }
+
+  return zombies;
+}
+
+
+/* =========================
+   外マップ上のアイテム
+========================= */
+
+const worldItems = [
+
+  {
+    id: 'small_stone_01',
+    itemId: 'small_stone',
+    x: 520
+  },
+
+  {
+    id: 'wood_01',
+    itemId: 'wood',
+    x: 690
+  },
+
+  {
+    id: 'small_stone_02',
+    itemId: 'small_stone',
+    x: 745
+  },
+
+  {
+    id: 'stick_01',
+    itemId: 'stick',
+    x: 810
+  },
+
+  {
+    id: 'can_01',
+    itemId: 'canned_food',
+    x: 1080
+  },
+
+  {
+    id: 'small_stone_03',
+    itemId: 'small_stone',
+    x: 1180
+  },
+
+  {
+    id: 'cloth_01',
+    itemId: 'cloth',
+    x: 1460
+  },
+
+  {
+    id: 'small_stone_04',
+    itemId: 'small_stone',
+    x: 1610
+  },
+
+  {
+    id: 'small_stone_05',
+    itemId: 'small_stone',
+    x: 2080
+  }
+
+];
+
+
+/* =========================
+   一時的な画面状態
+========================= */
+
 const state = {
-  day: 1,
-
-  time: 7 * 60,
-
-  location: '自宅前',
 
   worldWidth: 2400,
 
-  player: {
-    x: 260,
-
-    speed: 130,
-
-    direction: 1,
-
-    animationFrame: 0,
-
-    animationTimer: 0,
-
-    hp: 10,
-
-    maxHp: 10
-  },
-
-  inventory: {},
-
-  worldItems: [
-    {
-      id: 'wood_01',
-      name: '薪',
-      type: 'wood',
-      x: 690,
-      picked: false
-    },
-
-    {
-      id: 'stick_01',
-      name: '木の棒',
-      type: 'stick',
-      x: 810,
-      picked: false
-    },
-
-    {
-      id: 'can_01',
-      name: '缶詰',
-      type: 'can',
-      x: 1080,
-      picked: false
-    },
-
-    {
-      id: 'cloth_01',
-      name: '布',
-      type: 'cloth',
-      x: 1460,
-      picked: false
-    }
-  ],
-
-  zombies: createDefaultZombies(),
+  player: gameState.player,
 
   cameraX: 0,
 
   movingLeft: false,
-
   movingRight: false,
 
   lastTimestamp: 0,
 
-  minuteAccumulator: 0,
+  /*
+    現実時間の秒を貯める。
+    1秒ごとにゲーム内3分進める。
+  */
+  timeAccumulator: 0,
+
+  animationFrame: 0,
+  animationTimer: 0,
 
   nearbyItemId: null,
 
@@ -134,50 +232,82 @@ const state = {
 
   homeNotified: false,
 
-  ignoreHomeUntilFar: false
+  ignoreHomeUntilFar: false,
+
+  zombies:
+    createWorldZombies()
 };
 
+
+/* =========================
+   戦闘状態
+========================= */
 
 const combatState =
   createCombatState();
 
 
+/* =========================
+   操作ボタン
+========================= */
+
 const controls = {
   leftButton: null,
-
   actionButton: null,
-
   rightButton: null
 };
+
+let rangedButton = null;
 
 
 /* =========================
    共通
 ========================= */
 
-function clamp(value, min, max) {
+function clamp(
+  value,
+  min,
+  max
+) {
   return Math.max(
     min,
-    Math.min(max, value)
+    Math.min(
+      max,
+      value
+    )
   );
 }
 
 
-function formatTime(totalMinutes) {
+function formatTime(
+  totalMinutes
+) {
   const normalized =
-    ((Math.floor(totalMinutes) % 1440) + 1440)
+    (
+      (
+        Math.floor(
+          totalMinutes
+        )
+        % 1440
+      )
+      + 1440
+    )
     % 1440;
 
   const hours =
-    Math.floor(normalized / 60);
+    Math.floor(
+      normalized / 60
+    );
 
   const minutes =
     normalized % 60;
 
   return (
-    String(hours).padStart(2, '0')
+    String(hours)
+      .padStart(2, '0')
     + ':'
-    + String(minutes).padStart(2, '0')
+    + String(minutes)
+      .padStart(2, '0')
   );
 }
 
@@ -186,38 +316,71 @@ function formatTime(totalMinutes) {
    明るさ
 ========================= */
 
-function getSunlight(totalMinutes) {
+function getSunlight(
+  totalMinutes
+) {
   const t =
-    ((totalMinutes % 1440) + 1440)
+    (
+      (
+        totalMinutes
+        % 1440
+      )
+      + 1440
+    )
     % 1440;
+
+
+  /* 深夜 */
 
   if (t < 300) {
     return 0.08;
   }
 
+
+  /* 夜明け 05:00～07:00 */
+
   if (t < 420) {
     return (
       0.08
-      + ((t - 300) / 120) * 0.92
+      + (
+        (t - 300)
+        / 120
+      )
+      * 0.92
     );
   }
+
+
+  /* 昼 */
 
   if (t < 1020) {
     return 1;
   }
 
+
+  /* 夕方 17:00～19:00 */
+
   if (t < 1140) {
     return (
       1
-      - ((t - 1020) / 120) * 0.92
+      - (
+        (t - 1020)
+        / 120
+      )
+      * 0.92
     );
   }
+
+
+  /* 夜 */
 
   return 0.08;
 }
 
 
-function getLightLabel(light) {
+function getLightLabel(
+  light
+) {
   if (light >= 0.8) {
     return '明るい';
   }
@@ -240,16 +403,20 @@ function getLightLabel(light) {
 
 function updateHud() {
   const light =
-    getSunlight(state.time);
+    getSunlight(
+      gameState.time
+    );
 
   dateEl.textContent =
-    `${state.day}日目`;
+    `${gameState.day}日目`;
 
   timeEl.textContent =
-    formatTime(state.time);
+    formatTime(
+      gameState.time
+    );
 
   locationEl.textContent =
-    state.location;
+    gameState.location;
 
   lightLevelEl.textContent =
     `明るさ：${getLightLabel(light)}`;
@@ -260,48 +427,48 @@ function updateHud() {
    時間
 ========================= */
 
-function addGameMinutes(minutes) {
-  state.time += minutes;
-
-  while (
-    state.time >= 1440
-  ) {
-    state.time -= 1440;
-
-    state.day += 1;
-  }
+function addActionMinutes(
+  minutes
+) {
+  saveAddGameMinutes(
+    minutes
+  );
 
   updateHud();
 }
 
 
-/*
-  外にいる間
-
-  現実1秒
-  =
-  ゲーム内3分
-*/
-
-function advanceTime(deltaSeconds) {
-  state.minuteAccumulator +=
-    deltaSeconds * 3;
+function advanceTime(
+  deltaSeconds
+) {
+  state.timeAccumulator +=
+    deltaSeconds;
 
   if (
-    state.minuteAccumulator < 1
+    state.timeAccumulator < 1
   ) {
     return;
   }
 
-  const minutes =
+  const seconds =
     Math.floor(
-      state.minuteAccumulator
+      state.timeAccumulator
     );
 
-  state.minuteAccumulator -=
-    minutes;
+  state.timeAccumulator -=
+    seconds;
 
-  addGameMinutes(minutes);
+  /*
+    現実1秒
+    =
+    ゲーム内3分
+  */
+
+  saveAddGameMinutes(
+    seconds * 3
+  );
+
+  updateHud();
 }
 
 
@@ -315,7 +482,8 @@ function resizeCanvas() {
 
   const dpr =
     Math.min(
-      window.devicePixelRatio || 1,
+      window.devicePixelRatio
+      || 1,
       2
     );
 
@@ -340,7 +508,6 @@ function resizeCanvas() {
     || canvas.height !== height
   ) {
     canvas.width = width;
-
     canvas.height = height;
   }
 
@@ -359,7 +526,7 @@ function resizeCanvas() {
 
 
 /* =========================
-   自宅
+   自宅描画
 ========================= */
 
 function drawHouse(
@@ -402,6 +569,8 @@ function drawHouse(
   ctx.fill();
 
 
+  /* ドア */
+
   ctx.fillStyle =
     '#62584d';
 
@@ -413,6 +582,8 @@ function drawHouse(
   );
 
 
+  /* 窓 */
+
   ctx.fillStyle =
     '#cdd8d6';
 
@@ -422,7 +593,6 @@ function drawHouse(
     68,
     58
   );
-
 
   ctx.strokeStyle =
     '#626861';
@@ -439,13 +609,14 @@ function drawHouse(
 
 
 /* =========================
-   道の背景物
+   道の背景
 ========================= */
 
 function drawRoadObjects(
   groundY
 ) {
   const objects = [
+
     {
       x: 790,
       type: 'tree'
@@ -465,6 +636,7 @@ function drawRoadObjects(
       x: 1910,
       type: 'crate'
     }
+
   ];
 
 
@@ -478,7 +650,8 @@ function drawRoadObjects(
 
     if (
       x < -100
-      || x > canvas.clientWidth + 100
+      || x
+      > canvas.clientWidth + 100
     ) {
       continue;
     }
@@ -496,7 +669,6 @@ function drawRoadObjects(
         16,
         96
       );
-
 
       ctx.fillStyle =
         '#67735f';
@@ -525,7 +697,6 @@ function drawRoadObjects(
         38
       );
 
-
       ctx.strokeStyle =
         '#5f513d';
 
@@ -543,7 +714,7 @@ function drawRoadObjects(
 
 
 /* =========================
-   アイテム
+   地面アイテム描画
 ========================= */
 
 function drawCollectibleItem(
@@ -551,7 +722,9 @@ function drawCollectibleItem(
   groundY
 ) {
   if (
-    item.picked
+    isItemPicked(
+      item.id
+    )
   ) {
     return;
   }
@@ -566,7 +739,8 @@ function drawCollectibleItem(
 
   if (
     x < -60
-    || x > canvas.clientWidth + 60
+    || x
+    > canvas.clientWidth + 60
   ) {
     return;
   }
@@ -577,15 +751,16 @@ function drawCollectibleItem(
   ctx.lineWidth = 2;
 
 
+  /* 薪 */
+
   if (
-    item.type === 'wood'
+    item.itemId === 'wood'
   ) {
     ctx.strokeStyle =
       '#554638';
 
     ctx.fillStyle =
       '#8a6c4d';
-
 
     for (
       let i = 0;
@@ -609,8 +784,10 @@ function drawCollectibleItem(
   }
 
 
+  /* 木の棒 */
+
   else if (
-    item.type === 'stick'
+    item.itemId === 'stick'
   ) {
     ctx.strokeStyle =
       '#493a2d';
@@ -633,8 +810,57 @@ function drawCollectibleItem(
   }
 
 
+  /* 小石 */
+
   else if (
-    item.type === 'can'
+    item.itemId
+    === 'small_stone'
+  ) {
+    ctx.fillStyle =
+      '#777a77';
+
+    ctx.strokeStyle =
+      '#4f5350';
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+      x,
+      groundY - 6,
+      9,
+      6,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+      x + 9,
+      groundY - 4,
+      6,
+      4,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+    ctx.stroke();
+  }
+
+
+  /* 缶詰 */
+
+  else if (
+    item.itemId
+    === 'canned_food'
   ) {
     ctx.fillStyle =
       '#9da4a0';
@@ -672,8 +898,10 @@ function drawCollectibleItem(
   }
 
 
+  /* 布 */
+
   else if (
-    item.type === 'cloth'
+    item.itemId === 'cloth'
   ) {
     ctx.fillStyle =
       '#b7aa95';
@@ -719,7 +947,8 @@ function drawWorldItems(
   groundY
 ) {
   for (
-    const item of state.worldItems
+    const item
+    of worldItems
   ) {
     drawCollectibleItem(
       item,
@@ -730,7 +959,7 @@ function drawWorldItems(
 
 
 /* =========================
-   主人公
+   主人公描画
 ========================= */
 
 function drawPlayer(
@@ -739,7 +968,7 @@ function drawPlayer(
 ) {
   const frame =
     playerWalkFrames[
-      state.player.animationFrame
+      state.animationFrame
     ];
 
 
@@ -753,7 +982,9 @@ function drawPlayer(
 
 
   const x =
-    Math.round(screenX);
+    Math.round(
+      screenX
+    );
 
   const y =
     Math.round(
@@ -825,7 +1056,7 @@ function drawWorld() {
 
   const light =
     getSunlight(
-      state.time
+      gameState.time
     );
 
 
@@ -837,6 +1068,8 @@ function drawWorld() {
   );
 
 
+  /* 空 */
+
   ctx.fillStyle =
     '#dce7e9';
 
@@ -847,6 +1080,8 @@ function drawWorld() {
     groundY
   );
 
+
+  /* 地面 */
 
   ctx.fillStyle =
     '#aaa894';
@@ -888,6 +1123,8 @@ function drawWorld() {
   });
 
 
+  /* 道 */
+
   ctx.strokeStyle =
     '#757568';
 
@@ -910,19 +1147,21 @@ function drawWorld() {
 
   drawPlayer(
     state.player.x
-    - state.cameraX,
+      - state.cameraX,
 
     groundY
   );
 
 
+  /* 夜の暗さ */
+
   const darkness =
     clamp(
       0.68
-      * (1 - light),
-
+      * (
+        1 - light
+      ),
       0,
-
       0.68
     );
 
@@ -951,18 +1190,14 @@ function updateCamera() {
   const width =
     canvas.clientWidth;
 
-
   const desired =
     state.player.x
     - width * 0.46;
 
-
   state.cameraX =
     clamp(
       desired,
-
       0,
-
       Math.max(
         0,
         state.worldWidth - width
@@ -979,37 +1214,31 @@ function updatePlayerAnimation(
   deltaSeconds,
   isMoving
 ) {
-  if (
-    !isMoving
-  ) {
-    state.player.animationFrame =
-      0;
-
-    state.player.animationTimer =
-      0;
+  if (!isMoving) {
+    state.animationFrame = 0;
+    state.animationTimer = 0;
 
     return;
   }
 
 
-  state.player.animationTimer +=
+  state.animationTimer +=
     deltaSeconds;
-
 
   const frameDuration =
     0.13;
 
 
   while (
-    state.player.animationTimer
+    state.animationTimer
     >= frameDuration
   ) {
-    state.player.animationTimer -=
+    state.animationTimer -=
       frameDuration;
 
-    state.player.animationFrame =
+    state.animationFrame =
       (
-        state.player.animationFrame
+        state.animationFrame
         + 1
       )
       % playerWalkFrames.length;
@@ -1021,12 +1250,23 @@ function updatePlayerAnimation(
    移動
 ========================= */
 
-function stopMovement() {
-  state.movingLeft =
-    false;
+function stopMovement(
+  save = true
+) {
+  const wasMoving =
+    state.movingLeft
+    || state.movingRight;
 
-  state.movingRight =
-    false;
+  state.movingLeft = false;
+  state.movingRight = false;
+
+
+  if (
+    save
+    && wasMoving
+  ) {
+    saveGameState();
+  }
 }
 
 
@@ -1059,30 +1299,27 @@ function startAutoMove(
   if (
     direction < 0
   ) {
-    state.movingLeft =
-      true;
+    state.movingLeft = true;
+    state.movingRight = false;
 
-    state.movingRight =
-      false;
+    state.player.direction = -1;
   }
 
   else {
-    state.movingLeft =
-      false;
+    state.movingLeft = false;
+    state.movingRight = true;
 
-    state.movingRight =
-      true;
+    state.player.direction = 1;
   }
 }
 
 
 /* =========================
-   アイテム判定
+   近くのアイテム
 ========================= */
 
 function getNearbyItem() {
-  let nearest =
-    null;
+  let nearest = null;
 
   let nearestDistance =
     Infinity;
@@ -1090,10 +1327,12 @@ function getNearbyItem() {
 
   for (
     const item
-    of state.worldItems
+    of worldItems
   ) {
     if (
-      item.picked
+      isItemPicked(
+        item.id
+      )
     ) {
       continue;
     }
@@ -1107,11 +1346,12 @@ function getNearbyItem() {
 
 
     if (
-      distance <= PICKUP_DISTANCE
-      && distance < nearestDistance
+      distance
+      <= PICKUP_DISTANCE
+      && distance
+      < nearestDistance
     ) {
-      nearest =
-        item;
+      nearest = item;
 
       nearestDistance =
         distance;
@@ -1123,9 +1363,11 @@ function getNearbyItem() {
 }
 
 
-function findItemById(id) {
+function findWorldItemById(
+  id
+) {
   return (
-    state.worldItems.find(
+    worldItems.find(
       (item) =>
         item.id === id
     )
@@ -1134,55 +1376,65 @@ function findItemById(id) {
 }
 
 
-function inventoryText() {
-  const entries =
-    Object.entries(
-      state.inventory
-    )
-      .filter(
-        ([, count]) =>
-          count > 0
-      );
+/* =========================
+   アイテムを拾う
+========================= */
 
-
-  if (
-    entries.length === 0
-  ) {
-    return '持ち物はまだありません。';
+function pickUpItem(
+  worldItem
+) {
+  if (!worldItem) {
+    return;
   }
 
 
-  return (
-    '持ち物：'
-    + entries
-      .map(
-        ([name, count]) =>
-          `${name}×${count}`
-      )
-      .join('、')
-  );
-}
-
-
-function pickUpItem(item) {
   if (
-    !item
-    || item.picked
+    isItemPicked(
+      worldItem.id
+    )
   ) {
     return;
   }
 
 
-  item.picked =
-    true;
+  const itemId =
+    worldItem.itemId;
+
+  const itemName =
+    getItemName(
+      itemId
+    );
 
 
-  state.inventory[item.name] =
-    (
-      state.inventory[item.name]
-      || 0
-    )
-    + 1;
+  const result =
+    addItem(
+      itemId,
+      1
+    );
+
+
+  if (
+    !result.success
+  ) {
+    if (
+      result.reason === 'full'
+    ) {
+      messageEl.textContent =
+        `${itemName}はこれ以上持てません。`;
+    }
+
+    else {
+      messageEl.textContent =
+        `${itemName}を拾えませんでした。`;
+    }
+
+    return;
+  }
+
+
+  markItemPicked(
+    worldItem.id
+  );
 
 
   state.nearbyItemId =
@@ -1192,32 +1444,138 @@ function pickUpItem(item) {
     null;
 
 
+  /*
+    木の棒を初めて拾ったら
+    自動で近接武器にする
+  */
+
   if (
-    item.type === 'stick'
+    itemId === 'stick'
+    && !gameState
+      .equipment
+      .meleeWeaponId
   ) {
-    setWeapon(
-      combatState,
+    equipMeleeWeapon(
       'stick'
     );
-
-    messageEl.textContent =
-      '木の棒を拾いました。武器として装備しました。'
-      + inventoryText();
   }
 
-  else {
-    messageEl.textContent =
-      `${item.name}を拾いました。`
-      + inventoryText();
+
+  /*
+    小石を初めて拾ったら
+    遠距離攻撃に設定
+  */
+
+  if (
+    itemId === 'small_stone'
+    && !gameState
+      .equipment
+      .rangedWeaponId
+  ) {
+    equipRangedWeapon(
+      'small_stone'
+    );
   }
 
+
+  messageEl.textContent =
+    `${itemName}を拾いました。`
+    + getInventoryText();
+
+
+  updateRangedButton();
 
   updateActionButton();
+
+  drawWorld();
 }
 
 
 /* =========================
-   戦闘開始
+   装備確認
+========================= */
+
+function validateEquipment() {
+  const meleeId =
+    gameState
+      .equipment
+      .meleeWeaponId;
+
+  const rangedId =
+    gameState
+      .equipment
+      .rangedWeaponId;
+
+
+  /*
+    HOMEで収納した武器を
+    手に持ったままにしない
+  */
+
+  if (
+    meleeId
+    && !hasItem(
+      meleeId,
+      1
+    )
+  ) {
+    equipMeleeWeapon(
+      null
+    );
+  }
+
+
+  if (
+    rangedId
+    && !hasItem(
+      rangedId,
+      1
+    )
+  ) {
+    equipRangedWeapon(
+      null
+    );
+  }
+
+
+  /*
+    武器未設定なら
+    持っている基本武器を装備
+  */
+
+  if (
+    !gameState
+      .equipment
+      .meleeWeaponId
+    && hasItem(
+      'stick',
+      1
+    )
+  ) {
+    equipMeleeWeapon(
+      'stick'
+    );
+  }
+
+
+  if (
+    !gameState
+      .equipment
+      .rangedWeaponId
+    && hasItem(
+      'small_stone',
+      1
+    )
+  ) {
+    equipRangedWeapon(
+      'small_stone'
+    );
+  }
+}
+
+
+/* =========================
+   近接戦闘開始
 ========================= */
 
 function beginCombat(
@@ -1232,7 +1590,7 @@ function beginCombat(
 
   const light =
     getSunlight(
-      state.time
+      gameState.time
     );
 
 
@@ -1250,9 +1608,7 @@ function beginCombat(
     });
 
 
-  if (
-    !started
-  ) {
+  if (!started) {
     return;
   }
 
@@ -1260,17 +1616,18 @@ function beginCombat(
   messageEl.textContent =
     `${combatState.lastMessage} `
     + getCombatStatusText(
-      combatState,
-      state.player
+      combatState
     );
 
 
   buildCombatControls();
+
+  updateRangedButton();
 }
 
 
 /* =========================
-   戦闘操作
+   近接戦闘操作
 ========================= */
 
 function handleCombatAction(
@@ -1290,9 +1647,7 @@ function handleCombatAction(
   const zombie =
     combatState.zombie;
 
-
-  let result =
-    null;
+  let result = null;
 
 
   if (
@@ -1302,10 +1657,8 @@ function handleCombatAction(
       playerAttack({
         combatState,
 
-        playerState:
-          state.player,
-
-        addGameMinutes
+        addGameMinutes:
+          addActionMinutes
       });
   }
 
@@ -1317,13 +1670,11 @@ function handleCombatAction(
       playerPush({
         combatState,
 
-        playerState:
-          state.player,
-
         playerX:
           state.player.x,
 
-        addGameMinutes
+        addGameMinutes:
+          addActionMinutes
       });
   }
 
@@ -1335,17 +1686,20 @@ function handleCombatAction(
       playerEscape({
         combatState,
 
-        playerState:
-          state.player,
-
-        addGameMinutes
+        addGameMinutes:
+          addActionMinutes
       });
 
 
+    /*
+      ゾンビと反対方向へ離れる
+    */
+
     if (
-      zombie
+      result
+      && zombie
     ) {
-      const escapeDirection =
+      const direction =
         zombie.x
         >= state.player.x
           ? -1
@@ -1355,7 +1709,7 @@ function handleCombatAction(
       state.player.x =
         clamp(
           state.player.x
-          + escapeDirection * 90,
+          + direction * 90,
 
           30,
 
@@ -1365,18 +1719,20 @@ function handleCombatAction(
   }
 
 
-  if (
-    !result
-  ) {
+  if (!result) {
     return;
   }
 
 
+  saveGameState();
+
+
+  /* 主人公が倒れた */
+
   if (
-    state.player.hp <= 0
+    gameState.player.hp <= 0
   ) {
-    state.player.hp =
-      0;
+    gameState.player.hp = 0;
 
     endCombat(
       combatState
@@ -1384,14 +1740,20 @@ function handleCombatAction(
 
     stopMovement();
 
+    saveGameState();
+
     messageEl.textContent =
       'ゾンビに襲われて倒れました。';
 
     buildDownControls();
 
+    updateRangedButton();
+
     return;
   }
 
+
+  /* 戦闘継続 */
 
   if (
     isInCombat(
@@ -1401,12 +1763,244 @@ function handleCombatAction(
     messageEl.textContent =
       `${result.message} `
       + getCombatStatusText(
-        combatState,
-        state.player
+        combatState
       );
 
     buildCombatControls();
 
+    updateRangedButton();
+
+    return;
+  }
+
+
+  /* 戦闘終了 */
+
+  messageEl.textContent =
+    result.message;
+
+  buildControls();
+
+  updateRangedButton();
+}
+
+
+/* =========================
+   遠距離攻撃ボタン
+========================= */
+
+function createRangedButton() {
+  if (rangedButton) {
+    return;
+  }
+
+
+  /*
+    game-areaの右下に重ねる
+  */
+
+  const position =
+    getComputedStyle(
+      gameArea
+    ).position;
+
+  if (
+    position === 'static'
+  ) {
+    gameArea.style.position =
+      'relative';
+  }
+
+
+  rangedButton =
+    document.createElement(
+      'button'
+    );
+
+  rangedButton.type =
+    'button';
+
+  rangedButton.setAttribute(
+    'aria-label',
+    '遠距離攻撃'
+  );
+
+
+  /*
+    CSSを別途変更しなくても
+    丸ボタンになるようにする
+  */
+
+  Object.assign(
+    rangedButton.style,
+    {
+      position: 'absolute',
+
+      right: '14px',
+      bottom: '14px',
+
+      width: '72px',
+      height: '72px',
+
+      borderRadius: '50%',
+
+      border:
+        '3px solid #544d45',
+
+      background:
+        'rgba(248, 244, 232, 0.94)',
+
+      color:
+        '#2e2c29',
+
+      fontSize:
+        '17px',
+
+      fontWeight:
+        '700',
+
+      lineHeight:
+        '1.15',
+
+      whiteSpace:
+        'pre-line',
+
+      zIndex:
+        '10',
+
+      touchAction:
+        'manipulation',
+
+      userSelect:
+        'none',
+
+      WebkitUserSelect:
+        'none',
+
+      WebkitTouchCallout:
+        'none'
+    }
+  );
+
+
+  rangedButton.addEventListener(
+    'click',
+    handleRangedAttack
+  );
+
+
+  gameArea.appendChild(
+    rangedButton
+  );
+
+
+  updateRangedButton();
+}
+
+
+/* =========================
+   遠距離ボタン表示
+========================= */
+
+function updateRangedButton() {
+  if (!rangedButton) {
+    return;
+  }
+
+
+  const weapon =
+    getCurrentRangedWeapon();
+
+
+  if (!weapon) {
+    rangedButton.textContent =
+      '遠距離\nなし';
+
+    rangedButton.disabled =
+      true;
+
+    rangedButton.style.opacity =
+      '0.45';
+
+    return;
+  }
+
+
+  const ammoId =
+    weapon.ammoItemId;
+
+  const count =
+    gameState.inventory[
+      ammoId
+    ]
+    || 0;
+
+
+  rangedButton.textContent =
+    `${weapon.name}\n×${count}`;
+
+
+  const disabled =
+    count <= 0
+    || isInCombat(
+      combatState
+    )
+    || gameState.player.hp <= 0;
+
+
+  rangedButton.disabled =
+    disabled;
+
+  rangedButton.style.opacity =
+    disabled
+      ? '0.45'
+      : '1';
+}
+
+
+/* =========================
+   遠距離攻撃
+========================= */
+
+function handleRangedAttack() {
+  if (
+    isInCombat(
+      combatState
+    )
+  ) {
+    return;
+  }
+
+
+  if (
+    gameState.player.hp <= 0
+  ) {
+    return;
+  }
+
+
+  /*
+    投げる時はいったん止まる
+  */
+
+  stopMovement();
+
+
+  const result =
+    playerRangedAttack({
+
+      zombies:
+        state.zombies,
+
+      playerX:
+        state.player.x,
+
+      addGameMinutes:
+        addActionMinutes
+    });
+
+
+  if (!result) {
     return;
   }
 
@@ -1415,7 +2009,13 @@ function handleCombatAction(
     result.message;
 
 
-  buildControls();
+  saveGameState();
+
+  updateActionButton();
+
+  updateRangedButton();
+
+  drawWorld();
 }
 
 
@@ -1437,19 +2037,26 @@ function buildDownControls() {
   homeButton.addEventListener(
     'click',
     () => {
-      state.player.hp =
-        state.player.maxHp;
 
-      state.player.x =
+      gameState.player.hp =
+        gameState.player.maxHp;
+
+      gameState.player.x =
         260;
 
-      state.day +=
+      gameState.player.direction =
         1;
 
-      state.time =
+      gameState.day += 1;
+
+      gameState.time =
         7 * 60;
 
-      state.minuteAccumulator =
+      gameState.location =
+        '自宅前';
+
+
+      state.timeAccumulator =
         0;
 
       state.nearbyHome =
@@ -1461,6 +2068,9 @@ function buildDownControls() {
       state.ignoreHomeUntilFar =
         false;
 
+
+      saveGameState();
+
       updateHud();
 
       updateCamera();
@@ -1469,6 +2079,10 @@ function buildDownControls() {
         '翌朝、自宅前で目を覚ましました。';
 
       buildControls();
+
+      updateRangedButton();
+
+      drawWorld();
     }
   );
 
@@ -1480,7 +2094,7 @@ function buildDownControls() {
 
 
 /* =========================
-   近くの対象
+   近くの対象判定
 ========================= */
 
 function updateNearbyTargets() {
@@ -1492,6 +2106,8 @@ function updateNearbyTargets() {
     return;
   }
 
+
+  /* 自宅 */
 
   const homeDistance =
     Math.abs(
@@ -1512,16 +2128,13 @@ function updateNearbyTargets() {
     }
   }
 
-
   else if (
     homeDistance
     <= HOME_DISTANCE
   ) {
-    state.nearbyHome =
-      true;
+    state.nearbyHome = true;
 
-    state.nearbyItemId =
-      null;
+    state.nearbyItemId = null;
 
 
     if (
@@ -1546,15 +2159,14 @@ function updateNearbyTargets() {
     return;
   }
 
-
   else {
-    state.nearbyHome =
-      false;
+    state.nearbyHome = false;
 
-    state.homeNotified =
-      false;
+    state.homeNotified = false;
   }
 
+
+  /* ゾンビ */
 
   const zombie =
     findNearbyZombie(
@@ -1563,9 +2175,7 @@ function updateNearbyTargets() {
     );
 
 
-  if (
-    zombie
-  ) {
+  if (zombie) {
     beginCombat(
       zombie
     );
@@ -1573,6 +2183,8 @@ function updateNearbyTargets() {
     return;
   }
 
+
+  /* アイテム */
 
   const item =
     getNearbyItem();
@@ -1584,9 +2196,7 @@ function updateNearbyTargets() {
       : null;
 
 
-  if (
-    !item
-  ) {
+  if (!item) {
     state.lastNotifiedItemId =
       null;
 
@@ -1606,8 +2216,13 @@ function updateNearbyTargets() {
     state.lastNotifiedItemId
     !== item.id
   ) {
+    const name =
+      getItemName(
+        item.itemId
+      );
+
     messageEl.textContent =
-      `${item.name}を見つけました。「拾う」で持ち物に入ります。`;
+      `${name}を見つけました。「拾う」で持ち物に入ります。`;
 
     state.lastNotifiedItemId =
       item.id;
@@ -1616,7 +2231,7 @@ function updateNearbyTargets() {
 
 
 /* =========================
-   通常ボタン
+   ボタン生成
 ========================= */
 
 function makeButton(
@@ -1628,18 +2243,14 @@ function makeButton(
       'button'
     );
 
-
   button.type =
     'button';
-
 
   button.textContent =
     label;
 
 
-  if (
-    className
-  ) {
+  if (className) {
     button.className =
       className;
   }
@@ -1648,6 +2259,10 @@ function makeButton(
   return button;
 }
 
+
+/* =========================
+   中央ボタン
+========================= */
 
 function updateActionButton() {
   if (
@@ -1702,6 +2317,10 @@ function updateActionButton() {
 }
 
 
+/* =========================
+   通常操作
+========================= */
+
 function buildControls() {
   controlsEl.replaceChildren();
 
@@ -1709,102 +2328,119 @@ function buildControls() {
   controls.leftButton =
     makeButton('←');
 
-
   controls.actionButton =
     makeButton(
       '持ち物',
       'safe'
     );
 
-
   controls.rightButton =
     makeButton('→');
 
 
-  controls.leftButton.addEventListener(
-    'click',
-    () => {
-      startAutoMove(-1);
+  /* 左 */
 
-      messageEl.textContent =
-        '左へ移動中です。';
-
-      updateActionButton();
-    }
-  );
-
-
-  controls.actionButton.addEventListener(
-    'click',
-    () => {
-      if (
-        state.movingLeft
-        || state.movingRight
-      ) {
-        stopMovement();
+  controls.leftButton
+    .addEventListener(
+      'click',
+      () => {
+        startAutoMove(-1);
 
         messageEl.textContent =
-          '立ち止まりました。';
+          '左へ移動中です。';
 
         updateActionButton();
-
-        return;
       }
+    );
 
 
-      const item =
-        state.nearbyItemId
-          ? findItemById(
-              state.nearbyItemId
-            )
-          : getNearbyItem();
+  /* 中央 */
+
+  controls.actionButton
+    .addEventListener(
+      'click',
+      () => {
+
+        /* 停止 */
+
+        if (
+          state.movingLeft
+          || state.movingRight
+        ) {
+          stopMovement();
+
+          messageEl.textContent =
+            '立ち止まりました。';
+
+          updateActionButton();
+
+          return;
+        }
 
 
-      if (
-        item
-      ) {
-        pickUpItem(
-          item
-        );
+        /* 拾う */
 
-        return;
+        const item =
+          state.nearbyItemId
+            ? findWorldItemById(
+                state.nearbyItemId
+              )
+            : getNearbyItem();
+
+
+        if (item) {
+          pickUpItem(
+            item
+          );
+
+          return;
+        }
+
+
+        /* HOME */
+
+        if (
+          state.nearbyHome
+        ) {
+          gameState.location =
+            '自宅';
+
+          saveGameState();
+
+          window.location.href =
+            'zombie_home.html';
+
+          return;
+        }
+
+
+        /* 持ち物 */
+
+        messageEl.textContent =
+          getInventoryText();
       }
+    );
 
 
-      if (
-        state.nearbyHome
-      ) {
-        window.location.href =
-          'zombie_home.html';
+  /* 右 */
 
-        return;
+  controls.rightButton
+    .addEventListener(
+      'click',
+      () => {
+        startAutoMove(1);
+
+        messageEl.textContent =
+          '右へ移動中です。';
+
+        updateActionButton();
       }
-
-
-      messageEl.textContent =
-        inventoryText();
-    }
-  );
-
-
-  controls.rightButton.addEventListener(
-    'click',
-    () => {
-      startAutoMove(1);
-
-      messageEl.textContent =
-        '右へ移動中です。';
-
-      updateActionButton();
-    }
-  );
+    );
 
 
   controlsEl.append(
     controls.leftButton,
-
     controls.actionButton,
-
     controls.rightButton
   );
 
@@ -1814,7 +2450,7 @@ function buildControls() {
 
 
 /* =========================
-   戦闘ボタン
+   近接戦闘ボタン
 ========================= */
 
 function buildCombatControls() {
@@ -1827,12 +2463,10 @@ function buildCombatControls() {
       'safe'
     );
 
-
   const pushButton =
     makeButton(
       '押しのける'
     );
-
 
   const escapeButton =
     makeButton(
@@ -1872,9 +2506,7 @@ function buildCombatControls() {
 
   controlsEl.append(
     attackButton,
-
     pushButton,
-
     escapeButton
   );
 }
@@ -1884,7 +2516,9 @@ function buildCombatControls() {
    メインループ
 ========================= */
 
-function update(timestamp) {
+function update(
+  timestamp
+) {
   if (
     !state.lastTimestamp
   ) {
@@ -1909,8 +2543,7 @@ function update(timestamp) {
     timestamp;
 
 
-  let direction =
-    0;
+  let direction = 0;
 
 
   if (
@@ -1924,7 +2557,6 @@ function update(timestamp) {
       direction -= 1;
     }
 
-
     if (
       state.movingRight
     ) {
@@ -1932,6 +2564,8 @@ function update(timestamp) {
     }
   }
 
+
+  /* 移動 */
 
   if (
     direction !== 0
@@ -1942,16 +2576,14 @@ function update(timestamp) {
 
     state.player.x +=
       direction
-      * state.player.speed
+      * 130
       * deltaSeconds;
 
 
     state.player.x =
       clamp(
         state.player.x,
-
         30,
-
         state.worldWidth - 30
       );
 
@@ -1965,7 +2597,7 @@ function update(timestamp) {
       (
         direction > 0
         && state.player.x
-          >= state.worldWidth - 30
+        >= state.worldWidth - 30
       )
     ) {
       stopMovement();
@@ -1976,27 +2608,22 @@ function update(timestamp) {
   updateNearbyTargets();
 
 
-  const stillMoving =
+  const moving =
     state.movingLeft
     || state.movingRight;
 
 
   updatePlayerAnimation(
     deltaSeconds,
-    stillMoving
+    moving
   );
 
 
   /*
-    戦闘中はリアルタイム時間を止める。
+    通常の外時間。
 
-    戦闘中は、
-
-    攻撃 +2分
-    押しのける +1分
-    逃げる +1分
-
-    だけ時間が進む。
+    近接戦闘中は止めて、
+    戦闘コマンドの時間だけ進む。
   */
 
   if (
@@ -2012,9 +2639,9 @@ function update(timestamp) {
 
   updateCamera();
 
-
   updateActionButton();
 
+  updateRangedButton();
 
   drawWorld();
 
@@ -2030,10 +2657,49 @@ function update(timestamp) {
 ========================= */
 
 function init() {
+
+  /*
+    HOMEから戻ってきても
+    同じgameStateを使う
+  */
+
+  gameState.location =
+    '自宅前';
+
+
+  /*
+    壊れた位置データ対策
+  */
+
+  state.player.x =
+    clamp(
+      Number(
+        state.player.x
+      )
+      || 260,
+
+      30,
+
+      state.worldWidth - 30
+    );
+
+
+  state.player.direction =
+    state.player.direction < 0
+      ? -1
+      : 1;
+
+
+  validateEquipment();
+
+  saveGameState();
+
+
   updateHud();
 
-
   buildControls();
+
+  createRangedButton();
 
 
   messageEl.textContent =
@@ -2042,15 +2708,13 @@ function init() {
 
   resizeCanvas();
 
-
   updateCamera();
-
 
   updateNearbyTargets();
 
-
   updateActionButton();
 
+  updateRangedButton();
 
   drawWorld();
 
@@ -2082,7 +2746,19 @@ window.addEventListener(
   () => {
     stopMovement();
 
+    saveGameState();
+
     updateActionButton();
+
+    updateRangedButton();
+  }
+);
+
+
+window.addEventListener(
+  'pagehide',
+  () => {
+    saveGameState();
   }
 );
 
