@@ -1,0 +1,55 @@
+/* HOMEドールハウス上のNPCは立ち絵ではなく頭文字1文字で表示する。 */
+
+#npc-layer .home-npc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* 立ち絵は会話画面だけで使う。HOMEマップ上では隠す。 */
+#npc-layer .home-npc > img {
+  display: none;
+}
+
+#npc-layer .home-npc::before {
+  content: '?';
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  border: 2px solid #222;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* 現在のdeco001の並び順用フォールバック */
+#npc-layer .home-npc:nth-child(1)::before {
+  content: 'C';
+}
+
+#npc-layer .home-npc:nth-child(2)::before {
+  content: 'M';
+}
+
+/* 対応ブラウザでは名前で確実に判定 */
+#npc-layer .home-npc:has(img[alt='コール・リード'])::before {
+  content: 'C';
+}
+
+#npc-layer .home-npc:has(img[alt='ミア・リード'])::before {
+  content: 'M';
+}
+
+#npc-layer .home-npc:active::before {
+  transform: scale(0.94);
+}
