@@ -1063,7 +1063,7 @@ function openNPCDialogue(npc) {
     if (npc.id === 'father_001') {
 
       dialogueText.textContent =
-        'メイソンはまだこちらを警戒している。';
+        'コールはまだこちらを警戒している。';
 
     } else if (
       npc.id === 'mia_001'
