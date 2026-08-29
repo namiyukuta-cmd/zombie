@@ -15,29 +15,19 @@
     <div id="money"></div>
   </header>
 
-  <nav id="toolbar">
-    <button id="news-button" type="button">ニュース</button>
-    <button id="people-button" type="button">人物</button>
-    <button id="inventory-button" type="button">持ち物</button>
-    <button id="map-button" type="button">地図</button>
-  </nav>
-
-  <main id="scene">
-    <div id="scene-art">
-      <div id="scene-weather"></div>
-      <div id="scene-title"></div>
-      <div id="scene-detail"></div>
-      <div id="scene-people"></div>
-    </div>
+  <main id="scene-area">
+    <canvas id="town-world"></canvas>
+    <div id="scene-name"></div>
   </main>
 
   <section id="message"></section>
 
-  <section id="interaction-area">
-    <div id="actions"></div>
-  </section>
+  <section id="panel"></section>
 
-  <nav id="routes"></nav>
+  <nav id="bottom-bar">
+    <button id="inventory-button" type="button">持ち物</button>
+    <button id="home-button" type="button">自宅</button>
+  </nav>
 </div>
 
 <script type="module" src="js/town.js"></script>
