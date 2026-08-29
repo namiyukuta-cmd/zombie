@@ -4,7 +4,7 @@
 
    初回イベント
    ・隣家の玄関前
-   ・メイソンと遭遇
+   ・コールと遭遇
    ・家へ入る
    ・HOMEへ切り替え
    ・ミア登場
@@ -13,7 +13,7 @@
 import { getNPC } from '../../npc.js';
 
 
-const mason = getNPC('father_001');
+const cole = getNPC('father_001');
 const mia = getNPC('mia_001');
 
 
@@ -29,7 +29,7 @@ const IMAGES = {
   entranceClosed:
     'assets/events/home/event001/entrance_closed.jpeg',
 
-  /* 扉が開き、メイソンがこちらを見ている */
+  /* 扉が開き、コールがこちらを見ている */
   entranceOpen:
     'assets/events/home/event001/entrance_open.jpeg',
 
@@ -38,8 +38,8 @@ const IMAGES = {
     'assets/home/home.jpeg',
 
   /* NPC */
-  mason:
-    'assets/npc/mason.png',
+  cole:
+    'assets/npc/cole.png',
 
   mia:
     'assets/npc/mia.png'
@@ -79,7 +79,7 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
         text:
           '「誰だ！」'
@@ -176,9 +176,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「……手を上げろ。下ろすな。声を出すな。そのまま静かに中に入って、ドアを閉めろ」'
@@ -204,9 +204,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「ドアに手をつけろ」'
@@ -240,9 +240,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「……危険物は持っていないようだな」'
@@ -252,9 +252,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「いいだろう。中に入れ。ただし、この階以外に行くことは許さない。分かったな」'
@@ -309,9 +309,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「こっちに来い」'
@@ -329,9 +329,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「事情を聞く。名前は？」'
@@ -341,9 +341,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「お前一人か？ どこから来た？」'
@@ -353,9 +353,9 @@ export function createHomeEvent001(playerName = '◯◯') {
       {
         type: 'dialogue',
 
-        speaker: mason?.name ?? '男',
+        speaker: cole?.name ?? '男',
 
-        characterImage: IMAGES.mason,
+        characterImage: IMAGES.cole,
 
         text:
           '「それから……何を持っている？」'
@@ -411,7 +411,7 @@ export function createHomeEvent001(playerName = '◯◯') {
 
         flags: {
           home_event_001_complete: true,
-          mason_met: true,
+          cole_met: true,
           mia_met: true,
           home_unlocked: true
         }
