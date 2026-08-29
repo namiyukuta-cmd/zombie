@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Zombie - Åndalsnes</title>
+  <link rel="stylesheet" href="css/town.css">
+</head>
+<body>
+<div id="game">
+  <header id="hud">
+    <div id="date"></div>
+    <div id="time"></div>
+    <div id="location"></div>
+    <div id="money"></div>
+  </header>
+
+  <nav id="toolbar">
+    <button id="news-button" type="button">ニュース</button>
+    <button id="people-button" type="button">人物</button>
+    <button id="inventory-button" type="button">持ち物</button>
+    <button id="map-button" type="button">地図</button>
+  </nav>
+
+  <main id="scene">
+    <div id="scene-art">
+      <div id="scene-weather"></div>
+      <div id="scene-title"></div>
+      <div id="scene-detail"></div>
+      <div id="scene-people"></div>
+    </div>
+  </main>
+
+  <section id="message"></section>
+
+  <section id="interaction-area">
+    <div id="actions"></div>
+  </section>
+
+  <nav id="routes"></nav>
+</div>
+
+<script type="module" src="js/town.js"></script>
+</body>
+</html>
