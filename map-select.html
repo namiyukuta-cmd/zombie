@@ -1,1 +1,280 @@
-h
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  >
+
+  <title>MAP</title>
+
+  <link rel="stylesheet" href="css/map-select.css">
+</head>
+
+
+<body>
+
+<div id="game">
+
+
+  <!-- =========================
+       上部
+  ========================== -->
+  <header id="top-bar">
+
+    <div id="day-time">
+      <span id="day">1日目</span>
+      <span id="time">08:00</span>
+    </div>
+
+    <div id="current-location">
+      拠点
+    </div>
+
+  </header>
+
+
+
+  <!-- =========================
+       マップ
+  ========================== -->
+  <main id="map-area">
+
+    <div id="map-container">
+
+
+      <!--
+        集落全体のマップ画像。
+
+        最初は仮画像でもよい。
+        後から assets/maps/world/ などに置く。
+      -->
+      <img
+        id="map-image"
+        src="assets/maps/map-select.jpg"
+        alt="周辺地図"
+        draggable="false"
+      >
+
+
+      <!--
+        map-select.js が
+        行ける場所のボタンをここへ追加する。
+
+        例：
+        ・農場
+        ・隣家
+        ・雑貨店
+        ・スーパー
+        ・警察署
+
+        HTMLを修正せずJS側で増やす。
+      -->
+      <div id="map-marker-layer"></div>
+
+
+    </div>
+
+  </main>
+
+
+
+  <!-- =========================
+       選択した場所
+  ========================== -->
+  <section id="destination-panel">
+
+    <div id="destination-name">
+      行き先を選んでください
+    </div>
+
+    <div id="destination-info">
+      地図上の場所をタップしてください。
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       行き先決定
+  ========================== -->
+  <section id="travel-panel">
+
+    <button
+      id="travel-button"
+      type="button"
+      disabled
+    >
+      ここへ行く
+    </button>
+
+  </section>
+
+
+
+  <!-- =========================
+       下部メニュー
+  ========================== -->
+  <footer id="bottom-menu">
+
+    <button
+      id="home-button"
+      type="button"
+    >
+      拠点
+    </button>
+
+    <button
+      id="inventory-button"
+      type="button"
+    >
+      持ち物
+    </button>
+
+    <button
+      id="status-button"
+      type="button"
+    >
+      状態
+    </button>
+
+  </footer>
+
+
+
+  <!-- =========================
+       持ち物
+  ========================== -->
+  <section
+    id="inventory-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="panel-box">
+
+      <div class="panel-header">
+
+        <strong>
+          持ち物
+        </strong>
+
+        <button
+          id="inventory-close"
+          type="button"
+        >
+          閉じる
+        </button>
+
+      </div>
+
+      <div id="inventory-list"></div>
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       状態
+  ========================== -->
+  <section
+    id="status-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="panel-box">
+
+      <div class="panel-header">
+
+        <strong>
+          状態
+        </strong>
+
+        <button
+          id="status-close"
+          type="button"
+        >
+          閉じる
+        </button>
+
+      </div>
+
+
+      <div id="status-list">
+
+        <div class="status-row">
+          <span>HP</span>
+          <span id="status-hp">1</span>
+        </div>
+
+        <div class="status-row">
+          <span>水分</span>
+          <span id="status-thirst">100</span>
+        </div>
+
+        <div class="status-row">
+          <span>食欲</span>
+          <span id="status-hunger">100</span>
+        </div>
+
+        <div class="status-row">
+          <span>体力</span>
+          <span id="status-stamina">100</span>
+        </div>
+
+        <div class="status-row">
+          <span>衛生</span>
+          <span id="status-hygiene">100</span>
+        </div>
+
+        <div class="status-row">
+          <span>気分</span>
+          <span id="status-mood">100</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+</div>
+
+
+
+<!--
+  行き先一覧はHTMLへ直接書かない。
+
+  map-select.js
+       ↓
+  map-registry.js
+
+  を読んで、開放済みのマップだけ
+  #map-marker-layer に表示する。
+
+  「ここへ行く」
+       ↓
+  zombie.html
+       ↓
+  横スクロール移動完了
+       ↓
+  map.html?id=map001
+
+  という流れにする。
+-->
+<script
+  type="module"
+  src="js/map/map-select.js"
+></script>
+
+
+</body>
+</html>
