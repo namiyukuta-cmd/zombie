@@ -1,4 +1,25 @@
 import {
+  getItem,
+  getItemName,
+  getWeaponDamage,
+  getWeaponRange,
+  isMeleeWeapon,
+  isRangedWeapon
+} from './items.js';
+
+import {
+  canUseAmmo,
+  consumeAmmo
+} from './inventory.js';
+
+import {
+  gameState,
+  saveGameState,
+  damagePlayer,
+  markZombieDefeated
+} from './game-state.js';
+
+import {
   damageZombie,
   pushZombie,
   getZombieActionInterval,
@@ -8,38 +29,18 @@ import {
 
 
 /* =========================
-   武器
+   素手
 ========================= */
 
-export const WEAPONS = {
-  fists: {
-    id: 'fists',
-    name: '素手',
-    damage: 1
-  },
-
-  stick: {
-    id: 'stick',
-    name: '木の棒',
-    damage: 2
-  },
-
-  knife: {
-    id: 'knife',
-    name: 'ナイフ',
-    damage: 3
-  },
-
-  axe: {
-    id: 'axe',
-    name: '斧',
-    damage: 5
-  }
+const FISTS = {
+  id: 'fists',
+  name: '素手',
+  damage: 1
 };
 
 
 /* =========================
-   戦闘状態を作る
+   戦闘状態
 ========================= */
 
 export function createCombatState() {
@@ -52,50 +53,59 @@ export function createCombatState() {
 
     zombieActionInterval: 1,
 
-    weaponId: 'fists',
-
     lastMessage: ''
   };
 }
 
 
 /* =========================
-   武器取得
+   現在の近接武器
 ========================= */
 
-export function getWeapon(
-  combatState
-) {
-  const weapon =
-    WEAPONS[
-      combatState.weaponId
-    ];
+export function getCurrentMeleeWeapon() {
+  const itemId =
+    gameState.equipment.meleeWeaponId;
 
-  return (
-    weapon
-    || WEAPONS.fists
-  );
+
+  if (
+    !itemId
+    || !isMeleeWeapon(itemId)
+  ) {
+    return FISTS;
+  }
+
+
+  const item =
+    getItem(itemId);
+
+
+  if (!item) {
+    return FISTS;
+  }
+
+
+  return item;
 }
 
 
 /* =========================
-   武器変更
+   現在の遠距離武器
 ========================= */
 
-export function setWeapon(
-  combatState,
-  weaponId
-) {
+export function getCurrentRangedWeapon() {
+  const itemId =
+    gameState.equipment.rangedWeaponId;
+
+
   if (
-    !WEAPONS[weaponId]
+    !itemId
+    || !isRangedWeapon(itemId)
   ) {
-    return false;
+    return null;
   }
 
-  combatState.weaponId =
-    weaponId;
 
-  return true;
+  return getItem(itemId);
 }
 
 
@@ -117,14 +127,12 @@ export function startCombat({
     return false;
   }
 
-  combatState.active =
-    true;
 
-  combatState.zombie =
-    zombie;
+  combatState.active = true;
 
-  combatState.playerActionCount =
-    0;
+  combatState.zombie = zombie;
+
+  combatState.playerActionCount = 0;
 
   combatState.zombieActionInterval =
     getZombieActionInterval(
@@ -132,8 +140,10 @@ export function startCombat({
       strongArtificialLight
     );
 
+
   combatState.lastMessage =
     `${zombie.name}がいる。`;
+
 
   return true;
 }
@@ -146,53 +156,60 @@ export function startCombat({
 export function endCombat(
   combatState
 ) {
-  combatState.active =
-    false;
+  if (!combatState) {
+    return;
+  }
 
-  combatState.zombie =
-    null;
 
-  combatState.playerActionCount =
-    0;
+  combatState.active = false;
 
-  combatState.lastMessage =
-    '';
+  combatState.zombie = null;
+
+  combatState.playerActionCount = 0;
+
+  combatState.lastMessage = '';
 }
 
 
 /* =========================
-   ゾンビが行動するか
+   戦闘中か
 ========================= */
 
-function shouldZombieAct(
+export function isInCombat(
   combatState
 ) {
-  if (
-    !combatState.active
-    || !combatState.zombie
-  ) {
-    return false;
-  }
-
-  combatState.playerActionCount +=
-    1;
-
-  return (
-    combatState.playerActionCount
-    >= combatState.zombieActionInterval
+  return Boolean(
+    combatState
+    && combatState.active
+    && combatState.zombie
+    && isZombieAlive(
+      combatState.zombie
+    )
   );
 }
 
 
 /* =========================
-   ゾンビ行動後リセット
+   ゾンビ行動カウント
 ========================= */
 
-function resetZombieCounter(
+function shouldZombieAct(
   combatState
 ) {
-  combatState.playerActionCount =
-    0;
+  combatState.playerActionCount += 1;
+
+
+  if (
+    combatState.playerActionCount
+    >= combatState.zombieActionInterval
+  ) {
+    combatState.playerActionCount = 0;
+
+    return true;
+  }
+
+
+  return false;
 }
 
 
@@ -200,12 +217,12 @@ function resetZombieCounter(
    ゾンビ攻撃
 ========================= */
 
-function zombieAttack({
-  combatState,
-  playerState
-}) {
+function zombieAttack(
+  combatState
+) {
   const zombie =
     combatState.zombie;
+
 
   if (
     !zombie
@@ -218,29 +235,20 @@ function zombieAttack({
     };
   }
 
+
   const damage =
     Math.max(
-      0,
-      zombie.attackDamage || 1
+      1,
+      Math.floor(
+        zombie.attackDamage || 1
+      )
     );
 
-  if (
-    typeof playerState.hp
-    !== 'number'
-  ) {
-    playerState.hp =
-      10;
-  }
 
-  playerState.hp -=
-    damage;
+  damagePlayer(
+    damage
+  );
 
-  if (
-    playerState.hp < 0
-  ) {
-    playerState.hp =
-      0;
-  }
 
   return {
     attacked: true,
@@ -254,34 +262,49 @@ function zombieAttack({
 
 
 /* =========================
-   プレイヤー攻撃
+   近接攻撃
+
+   素手
+   木の棒
+   ナイフ
+   斧
 ========================= */
 
 export function playerAttack({
   combatState,
-  playerState,
   addGameMinutes
 }) {
   if (
-    !combatState.active
-    || !combatState.zombie
+    !isInCombat(
+      combatState
+    )
   ) {
     return null;
   }
 
+
   const zombie =
     combatState.zombie;
 
-  const weapon =
-    getWeapon(
-      combatState
-    );
 
-  const result =
+  const weapon =
+    getCurrentMeleeWeapon();
+
+
+  const damage =
+    weapon.id === 'fists'
+      ? FISTS.damage
+      : getWeaponDamage(
+          weapon.id
+        );
+
+
+  const attackResult =
     damageZombie(
       zombie,
-      weapon.damage
+      damage
     );
+
 
   if (
     typeof addGameMinutes
@@ -290,29 +313,35 @@ export function playerAttack({
     addGameMinutes(2);
   }
 
+
   let message =
     `${weapon.name}で攻撃。`
-    + `${result.damage}ダメージ。`;
+    + `${attackResult.damage}ダメージ。`;
 
+
+  /* 倒した */
 
   if (
-    result.defeated
+    attackResult.defeated
   ) {
+    markZombieDefeated(
+      zombie.id
+    );
+
+
     message +=
       `${zombie.name}を倒した。`;
+
 
     endCombat(
       combatState
     );
 
+
     return {
       type: 'attack',
 
-      success: true,
-
       defeated: true,
-
-      escaped: false,
 
       zombieActed: false,
 
@@ -323,11 +352,11 @@ export function playerAttack({
   }
 
 
-  let zombieActed =
-    false;
+  /* ゾンビの番 */
 
-  let playerDamage =
-    0;
+  let zombieActed = false;
+
+  let playerDamage = 0;
 
 
   if (
@@ -335,21 +364,18 @@ export function playerAttack({
       combatState
     )
   ) {
-    resetZombieCounter(
-      combatState
-    );
-
     const zombieResult =
-      zombieAttack({
-        combatState,
-        playerState
-      });
+      zombieAttack(
+        combatState
+      );
+
 
     zombieActed =
       zombieResult.attacked;
 
     playerDamage =
       zombieResult.damage;
+
 
     if (
       zombieResult.message
@@ -363,18 +389,18 @@ export function playerAttack({
   message +=
     ` ${getZombieHpText(zombie)}`;
 
+
   combatState.lastMessage =
     message;
+
+
+  saveGameState();
 
 
   return {
     type: 'attack',
 
-    success: true,
-
     defeated: false,
-
-    escaped: false,
 
     zombieActed,
 
@@ -391,25 +417,28 @@ export function playerAttack({
 
 export function playerPush({
   combatState,
-  playerState,
   playerX,
   addGameMinutes
 }) {
   if (
-    !combatState.active
-    || !combatState.zombie
+    !isInCombat(
+      combatState
+    )
   ) {
     return null;
   }
 
+
   const zombie =
     combatState.zombie;
+
 
   pushZombie(
     zombie,
     playerX,
     90
   );
+
 
   if (
     typeof addGameMinutes
@@ -418,15 +447,14 @@ export function playerPush({
     addGameMinutes(1);
   }
 
+
   let message =
     `${zombie.name}を押しのけた。`;
 
 
-  let zombieActed =
-    false;
+  let zombieActed = false;
 
-  let playerDamage =
-    0;
+  let playerDamage = 0;
 
 
   if (
@@ -434,21 +462,18 @@ export function playerPush({
       combatState
     )
   ) {
-    resetZombieCounter(
-      combatState
-    );
-
     const zombieResult =
-      zombieAttack({
-        combatState,
-        playerState
-      });
+      zombieAttack(
+        combatState
+      );
+
 
     zombieActed =
       zombieResult.attacked;
 
     playerDamage =
       zombieResult.damage;
+
 
     if (
       zombieResult.message
@@ -464,12 +489,11 @@ export function playerPush({
   );
 
 
+  saveGameState();
+
+
   return {
     type: 'push',
-
-    success: true,
-
-    defeated: false,
 
     escaped: true,
 
@@ -488,14 +512,16 @@ export function playerPush({
 
 export function playerEscape({
   combatState,
-  playerState,
   addGameMinutes
 }) {
   if (
-    !combatState.active
+    !isInCombat(
+      combatState
+    )
   ) {
     return null;
   }
+
 
   if (
     typeof addGameMinutes
@@ -504,15 +530,14 @@ export function playerEscape({
     addGameMinutes(1);
   }
 
+
   let message =
     'ゾンビから逃げた。';
 
 
-  let zombieActed =
-    false;
+  let zombieActed = false;
 
-  let playerDamage =
-    0;
+  let playerDamage = 0;
 
 
   if (
@@ -520,21 +545,18 @@ export function playerEscape({
       combatState
     )
   ) {
-    resetZombieCounter(
-      combatState
-    );
-
     const zombieResult =
-      zombieAttack({
-        combatState,
-        playerState
-      });
+      zombieAttack(
+        combatState
+      );
+
 
     zombieActed =
       zombieResult.attacked;
 
     playerDamage =
       zombieResult.damage;
+
 
     if (
       zombieResult.message
@@ -550,12 +572,11 @@ export function playerEscape({
   );
 
 
+  saveGameState();
+
+
   return {
     type: 'escape',
-
-    success: true,
-
-    defeated: false,
 
     escaped: true,
 
@@ -569,55 +590,278 @@ export function playerEscape({
 
 
 /* =========================
-   戦闘表示用テキスト
+   遠距離攻撃対象を探す
+
+   プレイヤーから射程内で
+   一番近いゾンビ
+========================= */
+
+export function findRangedTarget({
+  zombies,
+  playerX,
+  range
+}) {
+  let nearest = null;
+
+  let nearestDistance =
+    Infinity;
+
+
+  for (
+    const zombie of zombies
+  ) {
+    if (
+      !isZombieAlive(zombie)
+    ) {
+      continue;
+    }
+
+
+    const distance =
+      Math.abs(
+        zombie.x - playerX
+      );
+
+
+    if (
+      distance <= range
+      && distance < nearestDistance
+    ) {
+      nearest = zombie;
+
+      nearestDistance =
+        distance;
+    }
+  }
+
+
+  return nearest;
+}
+
+
+/* =========================
+   遠距離攻撃
+
+   小石
+   ↓
+   ダメージ1
+   小石1個消費
+
+   後で
+   弓
+   拳銃
+   なども同じ処理
+========================= */
+
+export function playerRangedAttack({
+  zombies,
+  playerX,
+  addGameMinutes
+}) {
+  const weapon =
+    getCurrentRangedWeapon();
+
+
+  if (!weapon) {
+    return {
+      success: false,
+
+      reason: 'no-ranged-weapon',
+
+      message:
+        '遠距離攻撃できる物を装備していません。'
+    };
+  }
+
+
+  const range =
+    getWeaponRange(
+      weapon.id
+    );
+
+
+  const target =
+    findRangedTarget({
+      zombies,
+
+      playerX,
+
+      range
+    });
+
+
+  if (!target) {
+    return {
+      success: false,
+
+      reason: 'no-target',
+
+      message:
+        '射程内にゾンビはいません。'
+    };
+  }
+
+
+  if (
+    !canUseAmmo(
+      weapon.id
+    )
+  ) {
+    return {
+      success: false,
+
+      reason: 'no-ammo',
+
+      message:
+        `${getItemName(weapon.id)}がありません。`
+    };
+  }
+
+
+  const consumed =
+    consumeAmmo(
+      weapon.id
+    );
+
+
+  if (!consumed) {
+    return {
+      success: false,
+
+      reason: 'no-ammo',
+
+      message:
+        '攻撃に使う物がありません。'
+    };
+  }
+
+
+  const damage =
+    getWeaponDamage(
+      weapon.id
+    );
+
+
+  const result =
+    damageZombie(
+      target,
+      damage
+    );
+
+
+  if (
+    typeof addGameMinutes
+    === 'function'
+  ) {
+    addGameMinutes(2);
+  }
+
+
+  let message =
+    `${weapon.name}で遠距離攻撃。`
+    + `${result.damage}ダメージ。`;
+
+
+  if (
+    result.defeated
+  ) {
+    markZombieDefeated(
+      target.id
+    );
+
+
+    message +=
+      `${target.name}を倒した。`;
+  }
+
+  else {
+    message +=
+      ` ${getZombieHpText(target)}`;
+  }
+
+
+  saveGameState();
+
+
+  return {
+    success: true,
+
+    target,
+
+    damage:
+      result.damage,
+
+    defeated:
+      result.defeated,
+
+    message
+  };
+}
+
+
+/* =========================
+   戦闘表示
 ========================= */
 
 export function getCombatStatusText(
-  combatState,
-  playerState
+  combatState
 ) {
   if (
-    !combatState.active
-    || !combatState.zombie
+    !isInCombat(
+      combatState
+    )
   ) {
     return '';
   }
 
+
   const zombie =
     combatState.zombie;
 
-  const playerHp =
-    typeof playerState.hp
-    === 'number'
-      ? playerState.hp
-      : 10;
 
   const weapon =
-    getWeapon(
-      combatState
-    );
+    getCurrentMeleeWeapon();
+
 
   return (
     `${getZombieHpText(zombie)}`
-    + ` / 自分 HP ${playerHp}`
-    + ` / 武器：${weapon.name}`
+    + ` / 自分 HP `
+    + `${gameState.player.hp}`
+    + `/`
+    + `${gameState.player.maxHp}`
+    + ` / 武器：`
+    + `${weapon.name}`
   );
 }
 
 
 /* =========================
-   戦闘中か
+   遠距離武器表示
 ========================= */
 
-export function isInCombat(
-  combatState
-) {
-  return Boolean(
-    combatState
-    && combatState.active
-    && combatState.zombie
-    && isZombieAlive(
-      combatState.zombie
-    )
+export function getRangedWeaponText() {
+  const weapon =
+    getCurrentRangedWeapon();
+
+
+  if (!weapon) {
+    return '遠距離：なし';
+  }
+
+
+  const ammoItemId =
+    weapon.ammoItemId;
+
+
+  const count =
+    gameState.inventory[
+      ammoItemId
+    ]
+    || 0;
+
+
+  return (
+    `遠距離：${weapon.name}`
+    + ` ×${count}`
   );
 }
