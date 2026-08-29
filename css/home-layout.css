@@ -1,0 +1,80 @@
+/* HOME画面のスマホ向けレイアウト調整 */
+
+/* 家の表示領域を縦に少し長くする。
+   背景・ホットスポット・NPCレイヤーを同じ比率で伸ばすため、
+   タップ位置の対応は崩さない。 */
+#home-scene {
+  aspect-ratio: 1.16 / 1;
+}
+
+#home-background {
+  object-fit: fill;
+}
+
+/* タップ可能な場所は常時うっすら光らせる。 */
+.home-hotspot,
+.hotspot {
+  border: 2px solid rgba(255, 206, 76, 0.72);
+  background: rgba(255, 244, 176, 0.08);
+  box-shadow:
+    inset 0 0 12px rgba(255, 224, 105, 0.22),
+    0 0 8px rgba(255, 197, 48, 0.42);
+  animation: home-hotspot-glow 1.8s ease-in-out infinite alternate;
+}
+
+.home-hotspot:active,
+.hotspot:active {
+  border-color: rgba(255, 183, 0, 1);
+  background: rgba(255, 235, 120, 0.24);
+  box-shadow:
+    inset 0 0 18px rgba(255, 215, 72, 0.42),
+    0 0 14px rgba(255, 183, 0, 0.72);
+}
+
+@keyframes home-hotspot-glow {
+  from {
+    box-shadow:
+      inset 0 0 8px rgba(255, 224, 105, 0.14),
+      0 0 5px rgba(255, 197, 48, 0.28);
+  }
+  to {
+    box-shadow:
+      inset 0 0 14px rgba(255, 224, 105, 0.30),
+      0 0 11px rgba(255, 197, 48, 0.55);
+  }
+}
+
+/* C / M もタップできることが分かるようにする。 */
+#npc-layer .home-npc::before {
+  box-shadow:
+    0 0 0 3px rgba(255, 236, 155, 0.45),
+    0 0 12px rgba(255, 190, 32, 0.62);
+}
+
+/* 通常時の大きな空白を作らない。
+   会話・イベントは hidden の間は完全に収納する。 */
+#bottom-menu {
+  margin-top: 0;
+}
+
+#dialogue-panel[hidden],
+#home-event-panel[hidden],
+#interaction-panel[hidden],
+#inventory-panel[hidden],
+#status-panel[hidden],
+#facility-panel[hidden],
+#storage-panel[hidden] {
+  display: none !important;
+}
+
+/* 会話は必要になった時だけ画面下から出る。 */
+#dialogue-panel:not([hidden]) {
+  align-items: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hotspot,
+  .hotspot {
+    animation: none;
+  }
+}
