@@ -11,15 +11,15 @@
 export const NPCS = {
 
   /* =======================================================
-     メイソン・リード
+     コール・リード
   ======================================================= */
 
   father_001: {
 
     id: 'father_001',
 
-    name: 'メイソン・リード',
-    englishName: 'Mason Reed',
+    name: 'コール・リード',
+    englishName: 'Cole Reed',
 
     age: 38,
     gender: 'male',
@@ -229,7 +229,7 @@ export const NPCS = {
     age: 4,
     gender: 'female',
 
-    role: 'メイソンの娘',
+    role: 'コールの娘',
 
     image: null,
 
