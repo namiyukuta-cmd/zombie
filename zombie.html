@@ -2,36 +2,37 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, user-scalable=no"
-  >
-  <title>Zombie</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>移動</title>
   <link rel="stylesheet" href="css/zombie.css">
 </head>
-
 <body>
-
 <div id="game">
-
   <header id="hud">
-    <div id="date"></div>
-    <div id="time"></div>
-    <div id="location"></div>
-    <div id="light-level"></div>
+    <span id="travel-from">HOME</span>
+    <span>→</span>
+    <span id="travel-to">探索地点001</span>
   </header>
 
   <main id="game-area">
-    <canvas id="world"></canvas>
+    <div id="travel-scene">
+      <div class="far-hills"></div>
+      <div class="road-line"></div>
+      <img id="travel-player" src="assets/player/player_walk_01.png" alt="主人公" draggable="false">
+    </div>
   </main>
 
-  <section id="message"></section>
+  <section id="message">周囲を警戒しながら進む。</section>
 
-  <section id="controls"></section>
+  <div id="progress-wrap" aria-label="移動進行度">
+    <div id="progress-bar"></div>
+  </div>
 
+  <section id="controls">
+    <button id="back-button" type="button">戻る</button>
+    <button id="move-button" type="button">進む</button>
+  </section>
 </div>
-
-<script type="module" src="js/main.js"></script>
-
+<script type="module" src="js/travel.js"></script>
 </body>
 </html>
