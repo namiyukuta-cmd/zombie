@@ -1,0 +1,1024 @@
+/* =========================================================
+   HOME
+   css/home.css
+
+   home.html 共通レイアウト用
+   ・ドールハウス背景
+   ・タップポイント
+   ・NPC
+   ・イベント
+   ・会話
+   ・持ち物
+   ・状態
+   ・設備
+   ・収納
+========================================================= */
+
+
+/* =========================================================
+   基本
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+html {
+  font-size: 18px;
+}
+
+body {
+  background: #f3f1eb;
+  color: #222;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Hiragino Sans",
+    "Yu Gothic",
+    "Meiryo",
+    sans-serif;
+
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+
+/* =========================================================
+   ゲーム全体
+========================================================= */
+
+#game {
+  width: 100%;
+  max-width: 760px;
+  min-height: 100dvh;
+
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #faf9f6;
+  border-left: 1px solid #cbc7bd;
+  border-right: 1px solid #cbc7bd;
+}
+
+
+/* =========================================================
+   HUD
+========================================================= */
+
+#hud {
+  position: relative;
+  z-index: 20;
+
+  flex: 0 0 auto;
+
+  background: #fff;
+  border-bottom: 1px solid #bbb7ae;
+}
+
+#hud-top {
+  min-height: 46px;
+
+  padding: 8px 12px;
+
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#day {
+  text-align: left;
+}
+
+#time {
+  text-align: center;
+}
+
+#location-name {
+  text-align: right;
+
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+
+/* =========================================================
+   ステータスバー
+========================================================= */
+
+#status-bar {
+  padding: 7px 8px 9px;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+
+  background: #ebe8e0;
+  border-top: 1px solid #d2cec4;
+}
+
+.status {
+  min-height: 36px;
+
+  padding: 5px 4px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+
+  background: #fff;
+  border: 1px solid #c9c5bb;
+  border-radius: 7px;
+
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.status-label {
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   ホーム画像エリア
+========================================================= */
+
+#home-area {
+  position: relative;
+
+  width: 100%;
+  flex: 0 0 auto;
+
+  background: #e7e5df;
+  overflow: hidden;
+}
+
+#home-scene {
+  position: relative;
+
+  width: 100%;
+
+  /*
+    ドールハウス背景を4:3で表示。
+    画像比率を変更する場合はここを変更。
+  */
+  aspect-ratio: 4 / 3;
+
+  overflow: hidden;
+
+  background: #fff;
+}
+
+
+/* =========================================================
+   ホーム背景
+========================================================= */
+
+#home-background {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  object-position: center;
+
+  background: #fff;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   タップポイント
+========================================================= */
+
+#hotspot-layer {
+  position: absolute;
+  inset: 0;
+
+  z-index: 5;
+
+  width: 100%;
+  height: 100%;
+}
+
+.home-hotspot,
+.hotspot {
+  position: absolute;
+
+  min-width: 44px;
+  min-height: 44px;
+
+  padding: 0;
+
+  border: 2px solid transparent;
+  border-radius: 8px;
+
+  background: transparent;
+}
+
+.home-hotspot:active,
+.hotspot:active {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(50, 50, 50, 0.4);
+}
+
+
+/*
+  開発中にタップ位置を見たい時だけ
+  #game に class="debug" を付ける。
+*/
+
+.debug .home-hotspot,
+.debug .hotspot {
+  background: rgba(255, 220, 80, 0.22);
+  border-color: rgba(180, 100, 0, 0.8);
+}
+
+
+/* =========================================================
+   NPC配置
+========================================================= */
+
+#npc-layer {
+  position: absolute;
+  inset: 0;
+
+  z-index: 6;
+
+  width: 100%;
+  height: 100%;
+
+  pointer-events: none;
+}
+
+.home-npc,
+.npc-sprite {
+  position: absolute;
+
+  max-width: none;
+  height: auto;
+
+  pointer-events: auto;
+  cursor: pointer;
+
+  transform-origin: bottom center;
+}
+
+
+/* NPCをボタン化した場合 */
+
+button.home-npc,
+button.npc-sprite {
+  padding: 0;
+
+  border: 0;
+  background: transparent;
+}
+
+
+/* =========================================================
+   イベント画像レイヤー
+========================================================= */
+
+#event-image-layer {
+  position: absolute;
+  inset: 0;
+
+  z-index: 8;
+
+  width: 100%;
+  height: 100%;
+
+  pointer-events: none;
+}
+
+#event-image-layer img,
+.home-event-overlay-image {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  object-position: center;
+}
+
+
+/* =========================================================
+   メッセージ
+========================================================= */
+
+#message-area {
+  flex: 0 0 auto;
+
+  padding: 9px 10px;
+
+  background: #fff;
+  border-top: 1px solid #bbb7ae;
+  border-bottom: 1px solid #bbb7ae;
+}
+
+#message {
+  min-height: 54px;
+
+  padding: 10px 12px;
+
+  display: flex;
+  align-items: center;
+
+  background: #f5f3ed;
+  border: 1px solid #cec9bd;
+  border-radius: 8px;
+
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+
+/* =========================================================
+   通常インタラクション
+========================================================= */
+
+#interaction-panel {
+  flex: 0 0 auto;
+
+  margin: 8px 10px 0;
+  padding: 12px;
+
+  background: #fff;
+  border: 1px solid #bbb7ae;
+  border-radius: 9px;
+}
+
+#interaction-panel[hidden] {
+  display: none;
+}
+
+#interaction-title {
+  margin-bottom: 8px;
+
+  font-size: 20px;
+  font-weight: 700;
+}
+
+#interaction-text {
+  margin-bottom: 12px;
+
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+#interaction-actions {
+  display: grid;
+  gap: 8px;
+}
+
+#interaction-actions button {
+  width: 100%;
+  min-height: 50px;
+
+  padding: 10px 14px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#interaction-actions button:active {
+  background: #e9e6de;
+}
+
+
+/* =========================================================
+   下部メニュー
+========================================================= */
+
+#bottom-menu {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+
+  width: 100%;
+
+  margin-top: auto;
+  padding:
+    8px
+    8px
+    calc(8px + env(safe-area-inset-bottom));
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+
+  background: rgba(250, 249, 246, 0.96);
+  border-top: 1px solid #aaa69d;
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#bottom-menu button {
+  min-height: 52px;
+
+  padding: 8px 5px;
+
+  background: #fff;
+  border: 1px solid #89867f;
+  border-radius: 9px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#bottom-menu button:active {
+  background: #ddd9cf;
+}
+
+
+/* MAPボタン */
+
+#map-button {
+  border-width: 2px !important;
+}
+
+
+/* =========================================================
+   共通オーバーレイ
+========================================================= */
+
+.overlay-panel {
+  position: fixed;
+  inset: 0;
+
+  z-index: 100;
+
+  padding:
+    max(16px, env(safe-area-inset-top))
+    12px
+    max(16px, env(safe-area-inset-bottom));
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(20, 20, 20, 0.64);
+
+  overflow-y: auto;
+}
+
+.overlay-panel[hidden] {
+  display: none;
+}
+
+.panel-box,
+.dialogue-box,
+.event-box {
+  width: min(100%, 650px);
+  max-height: calc(100dvh - 32px);
+
+  overflow-y: auto;
+
+  background: #fff;
+  border: 1px solid #777;
+  border-radius: 12px;
+
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+}
+
+
+/* =========================================================
+   共通パネルヘッダー
+========================================================= */
+
+.panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+
+  min-height: 56px;
+
+  padding: 8px 10px 8px 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+
+  background: #f3f1eb;
+  border-bottom: 1px solid #c4c0b6;
+
+  font-size: 20px;
+}
+
+.panel-header button {
+  min-width: 76px;
+  min-height: 44px;
+
+  padding: 7px 12px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   持ち物
+========================================================= */
+
+#inventory-list {
+  padding: 12px;
+
+  display: grid;
+  gap: 8px;
+}
+
+.inventory-item {
+  min-height: 54px;
+
+  padding: 10px 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: #f7f6f2;
+  border: 1px solid #cbc7bd;
+  border-radius: 8px;
+
+  font-size: 18px;
+}
+
+.inventory-item-name {
+  font-weight: 700;
+}
+
+.inventory-item-count {
+  flex: 0 0 auto;
+}
+
+
+/* =========================================================
+   状態詳細
+========================================================= */
+
+#status-detail {
+  padding: 12px;
+}
+
+.status-row {
+  min-height: 50px;
+
+  padding: 9px 12px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  border-bottom: 1px solid #ddd9d0;
+
+  font-size: 18px;
+}
+
+.status-row:last-child {
+  border-bottom: 0;
+}
+
+.status-row span:first-child {
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   NPC会話
+========================================================= */
+
+#dialogue-panel {
+  align-items: flex-end;
+
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.dialogue-box {
+  position: relative;
+
+  width: min(100%, 700px);
+
+  padding: 12px;
+}
+
+
+/* キャラクター */
+
+#dialogue-character {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+
+  min-height: 110px;
+
+  padding-right: 70px;
+}
+
+#dialogue-image-area {
+  width: 100px;
+  height: 130px;
+
+  flex: 0 0 100px;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+
+  overflow: hidden;
+}
+
+#dialogue-character-image {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  object-position: bottom center;
+}
+
+#dialogue-character-name {
+  padding-bottom: 10px;
+
+  font-size: 20px;
+  font-weight: 700;
+}
+
+
+/* 会話本文 */
+
+#dialogue-content {
+  margin-top: 8px;
+
+  padding: 12px;
+
+  background: #f5f3ed;
+  border: 1px solid #c8c3b8;
+  border-radius: 9px;
+}
+
+#dialogue-text {
+  min-height: 72px;
+
+  font-size: 19px;
+  line-height: 1.65;
+}
+
+#dialogue-actions {
+  margin-top: 12px;
+
+  display: grid;
+  gap: 8px;
+}
+
+#dialogue-actions button {
+  width: 100%;
+  min-height: 50px;
+
+  padding: 10px 12px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+/* 会話を閉じる */
+
+#dialogue-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+
+  min-width: 60px;
+  min-height: 44px;
+
+  padding: 7px 10px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 17px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   設備
+========================================================= */
+
+#facility-image-area {
+  width: 100%;
+  max-height: 280px;
+
+  overflow: hidden;
+
+  background: #eee;
+}
+
+#facility-image {
+  width: 100%;
+  max-height: 280px;
+
+  object-fit: contain;
+}
+
+#facility-description,
+#facility-status {
+  padding: 12px 14px;
+
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+#facility-description {
+  border-bottom: 1px solid #ddd9d0;
+}
+
+#facility-status {
+  background: #f6f4ef;
+}
+
+#facility-actions {
+  padding: 12px;
+
+  display: grid;
+  gap: 8px;
+}
+
+#facility-actions button {
+  min-height: 50px;
+
+  padding: 10px 12px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   収納
+========================================================= */
+
+#storage-list {
+  padding: 12px;
+
+  display: grid;
+  gap: 8px;
+}
+
+.storage-item {
+  min-height: 54px;
+
+  padding: 10px 12px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  background: #f7f6f2;
+  border: 1px solid #cbc7bd;
+  border-radius: 8px;
+
+  font-size: 18px;
+}
+
+
+/* =========================================================
+   ホームイベント
+========================================================= */
+
+#home-event-panel {
+  align-items: center;
+}
+
+.event-box {
+  overflow: hidden;
+}
+
+#home-event-image-area {
+  width: 100%;
+
+  background: #eee;
+}
+
+#home-event-image {
+  width: 100%;
+  max-height: 55dvh;
+
+  object-fit: contain;
+  object-position: center;
+}
+
+#home-event-title {
+  padding: 12px 14px 6px;
+
+  font-size: 21px;
+  font-weight: 700;
+}
+
+#home-event-text {
+  padding: 8px 14px 14px;
+
+  font-size: 19px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+#home-event-actions {
+  padding: 0 12px 14px;
+
+  display: grid;
+  gap: 8px;
+}
+
+#home-event-actions button {
+  width: 100%;
+  min-height: 52px;
+
+  padding: 10px 14px;
+
+  background: #fff;
+  border: 1px solid #888;
+  border-radius: 8px;
+
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#home-event-actions button:active {
+  background: #e8e5dc;
+}
+
+
+/* =========================================================
+   汎用ボタン
+========================================================= */
+
+.primary-button {
+  background: #262626 !important;
+  color: #fff !important;
+  border-color: #262626 !important;
+}
+
+.danger-button {
+  border: 2px solid #555 !important;
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   小さいスマホ
+========================================================= */
+
+@media (max-width: 420px) {
+
+  html {
+    font-size: 17px;
+  }
+
+  #hud-top {
+    min-height: 43px;
+    padding: 7px 9px;
+    font-size: 17px;
+  }
+
+  #status-bar {
+    padding-left: 5px;
+    padding-right: 5px;
+    gap: 4px;
+  }
+
+  .status {
+    min-height: 34px;
+    padding: 4px 2px;
+
+    font-size: 17px;
+  }
+
+  #message-area {
+    padding: 7px;
+  }
+
+  #message {
+    min-height: 50px;
+    padding: 8px 10px;
+  }
+
+  #bottom-menu {
+    gap: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  #bottom-menu button {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+
+  #dialogue-image-area {
+    width: 84px;
+    height: 115px;
+
+    flex-basis: 84px;
+  }
+}
+
+
+/* =========================================================
+   横向き
+========================================================= */
+
+@media (orientation: landscape) and (max-height: 600px) {
+
+  #game {
+    max-width: 1000px;
+  }
+
+  #home-scene {
+    aspect-ratio: 16 / 9;
+  }
+
+  #status-bar {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  #home-event-image {
+    max-height: 45dvh;
+  }
+
+  .overlay-panel {
+    align-items: flex-start;
+  }
+}
+
+
+/* =========================================================
+   hidden 保険
+========================================================= */
+
+[hidden] {
+  display: none !important;
+}
