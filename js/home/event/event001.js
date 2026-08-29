@@ -19,30 +19,28 @@ const mia = getNPC('mia_001');
 
 /* =========================================================
    使用画像
-
-   実際にGitHubへ置いたファイル名に合わせて変更する
 ========================================================= */
 
 const IMAGES = {
 
   /* 玄関・扉が閉じている */
   entranceClosed:
-    'assets/events/home/event001/entrance_closed.jpeg',
+    'assets/home_event/event001_01.PNG',
 
   /* 扉が開き、コールがこちらを見ている */
   entranceOpen:
-    'assets/events/home/event001/entrance_open.jpeg',
+    'assets/home_event/event001_02.PNG',
 
   /* HOME固定背景 */
   home:
-    'assets/home/home.jpeg',
+    'assets/home.JPEG',
 
   /* NPC */
   cole:
-    'assets/npc/cole.png',
+    'assets/Cole/cole.png',
 
   mia:
-    'assets/npc/mia.png'
+    'assets/mia/mia.png'
 };
 
 
