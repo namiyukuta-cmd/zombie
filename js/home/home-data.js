@@ -273,7 +273,7 @@ export function createDefaultHomeState() {
 
       home_event_001_complete: false,
 
-      mason_met: false,
+      cole_met: false,
 
       mia_met: false,
 
@@ -281,7 +281,7 @@ export function createDefaultHomeState() {
 
 
       /*
-        メイソンから許可されたらtrueにする。
+        コールから許可されたらtrueにする。
       */
 
       home_upper_floor_allowed: false,
