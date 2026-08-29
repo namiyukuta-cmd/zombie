@@ -1,1 +1,488 @@
-h
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  >
+
+  <title>MAP</title>
+
+  <link rel="stylesheet" href="css/map.css">
+</head>
+
+
+<body>
+
+<div id="game">
+
+
+  <!-- =========================
+       上部HUD
+  ========================== -->
+  <header id="hud">
+
+    <div id="hud-top">
+
+      <span id="day">
+        1日目
+      </span>
+
+      <span id="time">
+        08:00
+      </span>
+
+      <span id="map-name">
+        探索
+      </span>
+
+    </div>
+
+
+    <div id="status-bar">
+
+      <div class="status">
+        <span class="status-label">HP</span>
+        <span id="status-hp">1</span>
+      </div>
+
+      <div class="status">
+        <span class="status-label">水分</span>
+        <span id="status-thirst">100</span>
+      </div>
+
+      <div class="status">
+        <span class="status-label">食欲</span>
+        <span id="status-hunger">100</span>
+      </div>
+
+      <div class="status">
+        <span class="status-label">体力</span>
+        <span id="status-stamina">100</span>
+      </div>
+
+      <div class="status">
+        <span class="status-label">衛生</span>
+        <span id="status-hygiene">100</span>
+      </div>
+
+      <div class="status">
+        <span class="status-label">気分</span>
+        <span id="status-mood">100</span>
+      </div>
+
+    </div>
+
+  </header>
+
+
+
+  <!-- =========================
+       探索画面
+  ========================== -->
+  <main id="map-area">
+
+    <div id="map-scene">
+
+
+      <!--
+        各マップの背景画像。
+
+        map-loader.js
+        ↓
+        mapXXX.js
+        ↓
+        mapXXX-data.js
+
+        から設定する。
+      -->
+      <img
+        id="map-background"
+        src=""
+        alt=""
+        draggable="false"
+      >
+
+
+
+      <!--
+        棚・机・箱・冷蔵庫・扉・死体などの
+        タップ可能箇所。
+
+        JSからボタン／領域を追加する。
+      -->
+      <div id="hotspot-layer"></div>
+
+
+
+      <!--
+        NPC・ゾンビなど、
+        背景とは別に表示するもの。
+      -->
+      <div id="entity-layer"></div>
+
+
+
+      <!--
+        イベント時に一時的な画像を
+        重ねる場合に使用。
+      -->
+      <div id="event-image-layer"></div>
+
+
+
+      <!-- =====================
+           前の画面
+      ====================== -->
+      <button
+        id="previous-screen"
+        class="screen-button screen-button-left"
+        type="button"
+        aria-label="前の場所"
+        hidden
+      >
+        ‹
+      </button>
+
+
+
+      <!-- =====================
+           次の画面
+      ====================== -->
+      <button
+        id="next-screen"
+        class="screen-button screen-button-right"
+        type="button"
+        aria-label="次の場所"
+        hidden
+      >
+        ›
+      </button>
+
+
+
+      <!--
+        例：
+        1 / 3
+      -->
+      <div
+        id="screen-number"
+        hidden
+      ></div>
+
+
+    </div>
+
+  </main>
+
+
+
+  <!-- =========================
+       現在の場所
+  ========================== -->
+  <section id="room-info">
+
+    <div id="room-name"></div>
+
+  </section>
+
+
+
+  <!-- =========================
+       メッセージ
+  ========================== -->
+  <section id="message-area">
+
+    <div id="message">
+      周囲を調べてください。
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       探索／イベント操作
+  ========================== -->
+  <section
+    id="interaction-panel"
+    hidden
+  >
+
+    <div id="interaction-title"></div>
+
+    <div id="interaction-text"></div>
+
+    <div id="interaction-actions"></div>
+
+  </section>
+
+
+
+  <!-- =========================
+       NPC会話
+  ========================== -->
+  <section
+    id="dialogue-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="dialogue-box">
+
+
+      <div id="dialogue-character">
+
+        <img
+          id="dialogue-character-image"
+          src=""
+          alt=""
+          draggable="false"
+        >
+
+        <div id="dialogue-character-name"></div>
+
+      </div>
+
+
+      <div id="dialogue-content">
+
+        <div id="dialogue-text"></div>
+
+        <div id="dialogue-actions"></div>
+
+      </div>
+
+
+      <button
+        id="dialogue-close"
+        type="button"
+      >
+        閉じる
+      </button>
+
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       下部メニュー
+  ========================== -->
+  <footer id="bottom-menu">
+
+    <button
+      id="inventory-button"
+      type="button"
+    >
+      持ち物
+    </button>
+
+    <button
+      id="status-button"
+      type="button"
+    >
+      状態
+    </button>
+
+    <button
+      id="leave-button"
+      type="button"
+    >
+      帰る
+    </button>
+
+  </footer>
+
+
+
+  <!-- =========================
+       持ち物
+  ========================== -->
+  <section
+    id="inventory-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="panel-box">
+
+
+      <div class="panel-header">
+
+        <strong>
+          持ち物
+        </strong>
+
+        <button
+          id="inventory-close"
+          type="button"
+        >
+          閉じる
+        </button>
+
+      </div>
+
+
+      <div id="inventory-list"></div>
+
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       状態
+  ========================== -->
+  <section
+    id="status-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="panel-box">
+
+
+      <div class="panel-header">
+
+        <strong>
+          状態
+        </strong>
+
+        <button
+          id="status-close"
+          type="button"
+        >
+          閉じる
+        </button>
+
+      </div>
+
+
+      <div id="status-detail">
+
+
+        <div class="status-row">
+          <span>HP</span>
+          <span id="detail-hp">1</span>
+        </div>
+
+
+        <div class="status-row">
+          <span>水分</span>
+          <span id="detail-thirst">100</span>
+        </div>
+
+
+        <div class="status-row">
+          <span>食欲</span>
+          <span id="detail-hunger">100</span>
+        </div>
+
+
+        <div class="status-row">
+          <span>体力</span>
+          <span id="detail-stamina">100</span>
+        </div>
+
+
+        <div class="status-row">
+          <span>衛生</span>
+          <span id="detail-hygiene">100</span>
+        </div>
+
+
+        <div class="status-row">
+          <span>気分</span>
+          <span id="detail-mood">100</span>
+        </div>
+
+
+      </div>
+
+
+    </div>
+
+  </section>
+
+
+
+  <!-- =========================
+       イベント専用表示
+  ========================== -->
+  <section
+    id="event-panel"
+    class="overlay-panel"
+    hidden
+  >
+
+    <div class="event-box">
+
+
+      <div id="event-image-area">
+
+        <img
+          id="event-image"
+          src=""
+          alt=""
+          draggable="false"
+        >
+
+      </div>
+
+
+      <div id="event-title"></div>
+
+      <div id="event-text"></div>
+
+      <div id="event-actions"></div>
+
+
+    </div>
+
+  </section>
+
+
+
+</div>
+
+
+
+<!--
+  URL例
+
+  map.html?id=map001
+  map.html?id=map002
+  map.html?id=map003
+
+
+  map-loader.js が URL の id を取得
+          ↓
+  対応するマップJSを読み込む
+          ↓
+  js/map/map001/map001.js
+          ↓
+  map001-data.js
+          ↓
+  必要なイベントJSを読み込む
+
+
+  map.html 自体は、
+  マップが増えても基本変更しない。
+-->
+<script
+  type="module"
+  src="js/map/map-loader.js"
+></script>
+
+
+</body>
+
+</html>
