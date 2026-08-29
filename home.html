@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>HOME</title>
+  <link rel="stylesheet" href="css/home.css">
+  <link rel="stylesheet" href="css/home-npc-marker.css">
+</head>
+<body>
+<div id="game">
+
+  <header id="hud">
+    <div id="hud-top">
+      <span id="day">1日目</span>
+      <span id="time">08:00</span>
+      <span id="location-name">HOME</span>
+    </div>
+
+    <div id="status-bar">
+      <div class="status"><span class="status-label">HP</span><span id="status-hp">1</span></div>
+      <div class="status"><span class="status-label">水分</span><span id="status-thirst">100</span></div>
+      <div class="status"><span class="status-label">食欲</span><span id="status-hunger">100</span></div>
+      <div class="status"><span class="status-label">体力</span><span id="status-stamina">100</span></div>
+      <div class="status"><span class="status-label">衛生</span><span id="status-hygiene">100</span></div>
+      <div class="status"><span class="status-label">気分</span><span id="status-mood">100</span></div>
+    </div>
+  </header>
+
+  <main id="home-area">
+    <div id="home-scene">
+      <img id="home-background" src="" alt="拠点" draggable="false">
+      <div id="hotspot-layer"></div>
+      <div id="npc-layer"></div>
+      <div id="event-image-layer"></div>
+    </div>
+  </main>
+
+  <section id="message-area">
+    <div id="message">拠点です。</div>
+  </section>
+
+  <section id="interaction-panel" hidden>
+    <div id="interaction-title"></div>
+    <div id="interaction-text"></div>
+    <div id="interaction-actions"></div>
+  </section>
+
+  <section id="dialogue-panel" class="overlay-panel" hidden>
+    <div class="dialogue-box">
+      <div id="dialogue-character">
+        <div id="dialogue-image-area">
+          <img id="dialogue-character-image" src="" alt="" draggable="false">
+        </div>
+        <div id="dialogue-character-name"></div>
+      </div>
+      <div id="dialogue-content">
+        <div id="dialogue-text"></div>
+        <div id="dialogue-actions"></div>
+      </div>
+      <button id="dialogue-close" type="button">閉じる</button>
+    </div>
+  </section>
+
+  <footer id="bottom-menu">
+    <button id="inventory-button" type="button">持ち物</button>
+    <button id="status-button" type="button">状態</button>
+    <button id="map-button" type="button">MAP</button>
+  </footer>
+
+  <section id="inventory-panel" class="overlay-panel" hidden>
+    <div class="panel-box">
+      <div class="panel-header">
+        <strong>持ち物</strong>
+        <button id="inventory-close" type="button">閉じる</button>
+      </div>
+      <div id="inventory-list"></div>
+    </div>
+  </section>
+
+  <section id="status-panel" class="overlay-panel" hidden>
+    <div class="panel-box">
+      <div class="panel-header">
+        <strong>状態</strong>
+        <button id="status-close" type="button">閉じる</button>
+      </div>
+      <div id="status-detail">
+        <div class="status-row"><span>HP</span><span id="detail-hp">1</span></div>
+        <div class="status-row"><span>水分</span><span id="detail-thirst">100</span></div>
+        <div class="status-row"><span>食欲</span><span id="detail-hunger">100</span></div>
+        <div class="status-row"><span>体力</span><span id="detail-stamina">100</span></div>
+        <div class="status-row"><span>衛生</span><span id="detail-hygiene">100</span></div>
+        <div class="status-row"><span>気分</span><span id="detail-mood">100</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="facility-panel" class="overlay-panel" hidden>
+    <div class="panel-box">
+      <div class="panel-header">
+        <strong id="facility-title">設備</strong>
+        <button id="facility-close" type="button">閉じる</button>
+      </div>
+      <div id="facility-image-area">
+        <img id="facility-image" src="" alt="" draggable="false">
+      </div>
+      <div id="facility-description"></div>
+      <div id="facility-status"></div>
+      <div id="facility-actions"></div>
+    </div>
+  </section>
+
+  <section id="storage-panel" class="overlay-panel" hidden>
+    <div class="panel-box">
+      <div class="panel-header">
+        <strong>収納</strong>
+        <button id="storage-close" type="button">閉じる</button>
+      </div>
+      <div id="storage-list"></div>
+    </div>
+  </section>
+
+  <section id="home-event-panel" class="overlay-panel" hidden>
+    <div class="event-box">
+      <div id="home-event-image-area">
+        <img id="home-event-image" src="" alt="" draggable="false">
+      </div>
+      <div id="home-event-title"></div>
+      <div id="home-event-text"></div>
+      <div id="home-event-actions"></div>
+    </div>
+  </section>
+
+</div>
+
+<script type="module" src="js/home/home-loader.js"></script>
+</body>
+</html>
