@@ -75,7 +75,7 @@ if (scene && background && hotspotLayer) {
         continue;
       }
 
-      // 拡大中は「別の部屋を選ぶ大きな領域」は消し、
+      // 拡大中は「部屋そのもの」の大きな領域は消し、
       // その部屋の中にある家具・設備などだけを残す。
       if (spot.action?.type === 'room') {
         button.hidden = true;
@@ -129,7 +129,6 @@ if (scene && background && hotspotLayer) {
       usableHeight / roomHeightPx
     );
 
-    // 極端な拡大を避ける。狭い部屋でも十分押しやすい大きさになる。
     scale = Math.max(1.15, Math.min(scale, 4.6));
 
     const translateX = rect.width / 2 - roomCenterX * scale;
@@ -140,8 +139,6 @@ if (scene && background && hotspotLayer) {
       target.style.transformOrigin = '0 0';
       target.style.transform = transform;
     }
-
-    scene.style.setProperty('--home-room-zoom-scale', String(scale));
   }
 
   function zoomToRoom(room) {
@@ -182,8 +179,8 @@ if (scene && background && hotspotLayer) {
     }
   }
 
-  // home-loader.js が作るホットスポットをイベント委譲で拾う。
-  // room の時だけこちらが担当し、家具などは従来処理へそのまま渡す。
+  // captureで先に受ける。
+  // 部屋タップだけは従来の「ここを調べる」処理を止めて拡大へ回す。
   hotspotLayer.addEventListener('click', (event) => {
     const button = event.target.closest('.home-hotspot');
     if (!button) return;
@@ -191,18 +188,16 @@ if (scene && background && hotspotLayer) {
     const spot = spots.get(button.dataset.hotspotId);
     if (!spot || spot.action?.type !== 'room') return;
 
-    // ロック中の部屋は従来の lockedMessage を表示させる。
+    // ロック中は従来処理に渡し、lockedMessageを表示させる。
     if (!roomIsUnlocked(spot)) return;
 
     event.preventDefault();
     event.stopPropagation();
     zoomToRoom(spot);
-  });
+  }, true);
 
   backButton.addEventListener('click', resetZoom);
 
-  // HOMEイベント終了などで loader がホットスポット/NPCを描き直しても
-  // 現在の拡大状態を維持する。
   const observer = new MutationObserver(() => {
     if (!currentRoom) return;
     updateHotspotVisibility();
